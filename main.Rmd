@@ -34,14 +34,13 @@ print(files_list)
 \thispagestyle{empty}
 
 \begin{center}
-\Huge [1em]
-Booklets
+\Huge Booklets\\[1em]
 \Large
 Computational Statistics / Computerintensive Methoden\\[1em]
-\normalize
-\date{\today}\\[2em]
+\normalsize
+\textbf{\today}\\[2em]
 
-Name: Safouan Er-Ryfy\\
+Name: Safouan Er-Ryfy
 \end{center}
 \hrulefill
 \newpage

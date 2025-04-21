@@ -1,0 +1,250 @@
+# A1. SIR Modell
+
+Aufgabestellung:
+
+Wir verwenden SIR (Susceptible, Infectious, Recover) Modell
+als *stochastic individual contact model (ICM)*.
+
+## a) Der Verlauf der Verbreitung simulieren
+
+Simulieren Sie den Verlauf der Verbreitung in 50 Tagen und stellen
+Sie die Anzahl von infizierbaren, infizierten und immunisierten Personen
+in einer geeigneten Graphik dar.
+
+```{r ,include = F}
+#install.packages("xfun")
+#remove.packages("rlang")
+#install.packages("rlang")
+#install.packages("tergm")
+#install.packages("glue")
+library(EpiModel)
+```
+
+```{r , echo = T, collapse = TRUE, out.width="100%"}
+
+param <- param.icm(inf.prob = 0.1,
+                   act.rate = 10,
+                   rec.rate = 1/14,
+                   a.rate = 1/100,
+                   ds.rate = 1/90,
+                   di.rate = 2/90,
+                   dr.rate = 1/90)
+
+init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+control <- control.icm(type = "SIR", nsteps = 50)
+
+model1 <- icm(param, init, control)
+plot(model1)
+```
+
+## b) Hygienevorschriften
+
+Gehen Sie davon aus, dass zum Zeitpunkt $t_H = 0$ Hygienevorschriften
+erlassen wurden (z.B. Händewaschen, Mundschutz etc.). Dies beeinflusst
+die Ansteckungswahrscheinlichkeit ($inf.prob$) und senkt sie auf $5\%$.
+Simulieren Sie die neue Situation und vergleichen Sie diese mit Ihren
+Ergebnissen aus a).
+
+```{r , echo=T, collapse = TRUE,out.width="80%"}
+# Die Infektionswahrscheinlichkeit (inf.prob) wird von 0.1 auf 0.05 reduziert.
+param <- param.icm(inf.prob = 0.05,
+                   act.rate = 10,
+                   rec.rate = 1/14,
+                   a.rate = 1/90,
+                   ds.rate = 1/90,
+                   di.rate = 2/90,
+                   dr.rate = 1/90)
+
+init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+control <- control.icm(type = "SIR", nsteps = 50)
+
+model2 <- icm(param, init, control)
+
+par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
+plot(model1, main = "inf.prob = 10%")
+plot(model2, main = "inf.prob = 5%")
+
+```
+
+Eine höhere Infektionswahrscheinlichkeit ($inf.prob = 10\%$) führt zu einem schnelleren und stärkeren Anstieg der Infektionen. Bei niedriger Wahrscheinlichkeit ($5\%$) verläuft die Ausbreitung deutlich flacher und langsamer.
+
+## c) Kontakseinschränkung
+
+Gehen Sie nun davon aus, dass die Population keine Hygienemaßnahmen
+ergreift, aber zum Zeitpunkt $t_K = 0$ den Kontakt einschränkt. D.h.
+hier wird die Begegnungsrate gesenkt (auf $5$ bzw. $2$). Vergleichen Sie
+Ihre Ergebnisse mit a) und b) und interpretieren diese.
+
+```{r , echo = T, collapse = TRUE, out.width="100%"}
+param1 <- param.icm(inf.prob = 0.1,
+                   act.rate = 5,
+                   rec.rate = 1/14,
+                   a.rate = 1/90,
+                   ds.rate = 1/90,
+                   di.rate = 2/90,
+                   dr.rate = 1/90)
+
+param2 <- param.icm(inf.prob = 0.1,
+                   act.rate = 2,
+                   rec.rate = 1/14,
+                   a.rate = 1/90,
+                   ds.rate = 1/90,
+                   di.rate = 2/90,
+                   dr.rate = 1/90)
+
+init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+control <- control.icm(type = "SIR", nsteps = 50)
+
+model_c1 <- icm(param1, init, control)
+model_c2 <- icm(param2, init, control)
+
+par(mfrow = c(2, 2))
+
+plot(model1 , main = "a) act.rate = 10, inf.prob = 10%")
+plot(model2 , main = "b) act.rate = 10, inf.prob = 5%")
+plot(model_c1, main = "c) act.rate = 5, inf.prob = 10%")
+plot(model_c2, main = "d) act.rate = 2, inf.prob = 10%")
+```
+
+- Hygienemaßnahmen und Kontaktbeschränkungen wirken sich jeweils auf die Ansteckungswahrscheinlichkeit (`inf.prob`) und die Begegnungsrate (`act.rate`) aus. Die Abbildungen b) und c) zeigen: Eine Halbierung der `act.rate` hat einen ähnlichen Effekt wie eine Halbierung der `inf.prob`. Wird `act.rate` sogar auf 2 gesenkt (d)), flacht der Verlauf der Infektion deutlich ab.
+
+## d) Kombination aus Hygienemaßnahmen und Kontaktbeschränkungen
+
+Kombinieren Sie die Maßnahmen aus b) und c) und vergleichen auch diesen
+Effekt mit Ihren vorherigen Befunden.
+
+```{r  , echo = T, collapse = TRUE, out.width="100%"}
+
+param3 <- param.icm(inf.prob = 0.05,
+                   act.rate = 5,
+                   rec.rate = 1/14,
+                   a.rate = 1/90,
+                   ds.rate = 1/90,
+                   di.rate = 2/90,
+                   dr.rate = 1/90)
+
+param4 <- param.icm(inf.prob = 0.05,
+                   act.rate = 2,
+                   rec.rate = 1/14,
+                   a.rate = 1/90,
+                   ds.rate = 1/90,
+                   di.rate = 2/90,
+                   dr.rate = 1/90)
+
+init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+control <- control.icm(type = "SIR", nsteps = 50)
+
+model_d3 <- icm(param3, init, control)
+model_d4 <- icm(param4, init, control)
+
+par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
+plot(model_d3 , main = "e) act.rate = 5, inf.prob = 5%")
+plot(model_d4 , main = "f) act.rate = 2, inf.prob = 5%")
+```
+
+- Die Kombination aus Hygienemaßnahmen und Kontaktbeschränkungen wirkt besonders effektiv – gemeinsam flachen sie die Infektionskurve deutlich stärker ab.
+
+## e) Zeit variieren
+
+Variieren Sie die Zeitpunkte $t_H$ und $t_K$ und setzen den
+Maßnahmen gegebenenfalls auch ein Ende. Vergleichen Sie auch jetzt
+die Verläufe und interpretieren diese.
+
+```{r, include = F}
+change_inf.prob <- 10
+change_act.rate <- 20
+
+lists <- list(
+  list(
+    at = change_inf.prob,
+    param = list(inf.prob = 0.05)
+  ),
+  list(
+    at = change_act.rate,
+    param = list(act.rate = 2)
+  )
+)
+
+param5 <- param.net(inf.prob =  0.1,
+                   act.rate =  10,
+                   param.updater.list = lists,
+                   rec.rate = 1/14,
+                   a.rate = 1/90,
+                   ds.rate = 1/90,
+                   di.rate = 2/90,
+                   dr.rate = 1/90)
+
+nw <- network_initialize(n = 50) # Es gibt noch keine Kanten (also keine Kontakte)
+
+# Ein stochastisches Netzwerkmodell
+est <- netest(
+  nw, formation = ~edges, # Nur Kontakte sind relevant
+  target.stats = 50, # Im Schnitt hat jede Person 1 Kontakt
+  coef.diss = dissolution_coefs(~offset(edges), 10, 0),
+  verbose = FALSE
+)
+
+init <- init.net(s.num = 5000, i.num = 10, r.num = 0)
+control <- control.net(type = "SIR", nsteps = 50, verbose = FALSE)
+
+model_e5 <- netsim(est, param5, init, control)
+plot(model_e5, main = "g) inf.prob = 5%, act.rate = 2")
+abline(v = change_inf.prob, lty = 2,col = "gray")
+text(x=change_inf.prob-0.5, y=40, srt=90, 't_H')
+abline(v = change_act.rate, lty = 2,col = "gray")
+text(x=change_act.rate-0.5, y=40, srt=90, 't_K')
+```
+
+- Ab dem Zeitpunkt `t_H = 10` wurde die Ansteckungswahrscheinlichkeit (`inf.prob`) von $10\%$ auf $5\%$ gesenkt. Ab `t_K = 20` kam zusätzlich eine Reduktion der Kontaktfrequenz (`act.rate`) von 10 auf 2 hinzu. Beide Maßnahmen zusammen zeigen eine deutlich stärkere Wirkung.
+
+\newpage
+
+# A2. SIS Modell
+
+## a. SIR und SIS vergleichen
+Inzwischen weiß man, dass sich Menschen nach einer gewissen Zeit erneut infizieren können.
+
+- Was bedeutet das für unser Modell? Es gibt keine dauerhafte Immunität nach einer Genesung. Die Gruppe der „Genesenen“ verliert damit an Bedeutung – stattdessen kehren Personen nach ihrer Infektion wieder in die Gruppe der Anfälligen zurück. In diesem Szenario erreicht die Anzahl der Infizierten ein stabiles Gleichgewicht, bei dem sich Neuinfektionen und Genesungen die Waage halten.
+        
+- Was wäre hier besser? Ein SIS-Modell ist für diesen Fall besser geeignet als das klassische SIR-Modell, da es genau diesen Rückfluss von Genesenen zu Anfälligen abbildet.
+        
+- Setzen Sie das neue Modell (auch als stochastic individual contact model (ICM)) in einer Simulation um, ’spielen’ mit den entsprechenden Parametern, stellen die Ergebnisse in geeigneten Graphiken dar und interpretieren Ihre Befunde.
+
+```{r, echo = T, collapse = TRUE, out.width="100%", include = T}
+param <- param.icm(inf.prob =  0.1,
+                   act.rate =  10,
+                   rec.rate = 1/14,
+                   a.rate = 1/90,
+                   ds.rate = 1/90,
+                   di.rate = 2/90,
+                   dr.rate = 1/90)
+
+init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+control <- control.icm(type = "SIS", nsteps = 50)
+
+par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
+sis_model <- icm(param, init, control)
+plot(model1, main="SIR Model")
+plot(sis_model, main="SIS Model")
+```
+
+## b. Mögliche Erweiterung: Virusvarianten
+
+Im Verlauf der Pandemie sind viele verschiedene Virusvarianten aufgetreten.
+
+- Was bedeuten diese Varianten für die Modellierung? Jede Variante hat eigene Eigenschaften wie Ansteckungsrate oder Krankheitsverlauf. Daher müsste man für jede Variante eigene Parameter definieren.
+
+- Wie könnte man das modellieren – und wo liegen die Schwierigkeiten? Man könnte mehrere Varianten im Modell abbilden, z.B. mit separaten Zuständen oder Parametern.  
+
+- Probleme dabei:
+  - Eine Person kann sich mit mehreren Varianten anstecken (Ko-Infektion).
+  - Es ist schwierig, realistische Übertragungsraten für jede Variante zu bestimmen.
+  - Die Modellierung wird deutlich komplexer, weil mehr Parameter und Zustände nötig sind.
+
+## c. Weitere Herausforderungen: Impfungen
+
+- Wie kann man Impfungen berücksichtigen? Die Infizierbaren (S) könnten in zwei Gruppen unterteilt werden: Geimpfte und Ungeimpfte – mit unterschiedlichen Ansteckungsraten.
+
+- Welche Parameter beeinflussen Impfungen? Besonders relevant sind `inf.prob` (Ansteckungswahrscheinlichkeit) und `rec.rate` (Erholungsrate)
+
+- Sind diese Einflüsse konstant? Nein, sie können variieren, z.B. je nach Alter, Immunsystem, Vorerkrankungen oder Zeitpunkt der Impfung.

@@ -1,0 +1,58 @@
+---
+header-includes:
+  - \usepackage{fancyhdr}
+  - \usepackage[utf8]{inputenc}
+  - \fancypagestyle{myfancy}[fancydefault]{
+      \fancyfoot{}
+      \fancyfoot[C]{\thepage}
+    }
+  - \pagestyle{myfancy}
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: false
+    includes:
+        in_header: styles.sty
+---
+```{r setup, include=FALSE}
+options(repos = "https://cloud.r-project.org/")
+knitr::opts_chunk$set(error=FALSE,        # Keep compiling upon error
+                      echo=TRUE,         # echo code by default
+                      results=TRUE,
+                      collapse=TRUE,
+                      fig.show="show",
+                      fig.width = 7,     # set figure width
+                      out.width = "70%", # set width of displayed images
+                      warning=FALSE,      # show R warnings
+                      message=FALSE,
+                      error=TRUE)      # show R messages
+files_list = list.files(path = "./src/", pattern = ".Rmd", all.files = TRUE, full.names = TRUE)
+print(files_list)
+```
+
+```{=latex}
+\thispagestyle{empty}
+
+\begin{center}
+\Huge [1em]
+Booklets
+\Large
+Computational Statistics / Computerintensive Methoden\\[1em]
+\normalize
+\date{\today}\\[2em]
+
+Name: Safouan Er-Ryfy\\
+\end{center}
+\hrulefill
+\newpage
+```
+```{=latex}
+\tableofcontents
+\newpage
+```
+
+#  1. Verbreitung von Krankheiten
+```{r child = files_list[1]}
+
+```
+\newpage

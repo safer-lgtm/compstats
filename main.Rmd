@@ -55,3 +55,9 @@ Name: Safouan Er-Ryfy
 
 ```
 \newpage
+
+#  1. Monte Carlo Integration
+```{r child = files_list[2]}
+
+```
+\newpage

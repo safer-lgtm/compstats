@@ -1,29 +1,29 @@
----
-output:
-  pdf_document: default
-  html_document: default
----
-# A1. Monte Carlo Approximation von \(\pi\)
+# A1. Monte Carlo Approximation von Kreiszahl
 
-In dieser Übung soll die Kreiszahl $\pi$ approximiert werden.
+In dieser Übung soll die Kreiszahl \(\pi\) approximiert werden.
 
-Erzeuge hierzu $n$ Tupel $(x_i, y_i)$, $i = 1, \dotsc, n$ mit 
+Erzeuge hierzu \(n\) Tupel \((x_i, y_i), \, i = 1, \dotsc, n\) mit
+
 \[
 x_i, y_i \sim \mathcal{U}([-1, 1])
 \]
+
 und definiere daraus die Variable
+
 \[
 z_i = 4 \cdot \mathbf{1}(x_i^2 + y_i^2 \leq 1).
 \]
-Hierbei ist $\mathbf{1}$ die Indikatorfunktion, die $1$ liefert, wenn die Bedingung erfüllt ist, und $0$ sonst.
 
-Approximiert wird $\pi$ durch
+Hierbei ist \(\mathbf{1}\) die Indikatorfunktion, die \(1\) liefert, wenn die Bedingung erfüllt ist, und \(0\) sonst.
+
+Approximiert wird \(\pi\) durch
+
 \[
 \hat{\pi} = \frac{1}{n} \sum_{i=1}^{n} z_i.
 \]
 
-- Erzeuge eine Tabelle, in der für $n = 10^k$, $k \in \{1, \dotsc, 8\}$ jeweils die Approximation $\hat{\pi}$ und der absolute Fehler $|\pi - \hat{\pi}|$ dargestellt werden.
-- Stimmt die Genauigkeit mit der Tschebische-Schätzung aus dem Video überein?
+- Erzeuge eine Tabelle, in der für \(n = 10^k\), \(k \in \{1, \dotsc, 8\}\) jeweils die Approximation \(\hat{\pi}\) und der absolute Fehler \(|\pi - \hat{\pi}|\) dargestellt werden.
+- Stimmt die Genauigkeit mit der Tschebyscheff-Schätzung aus dem Video überein?
 
 In dieser Aufgabe schätzen wir die Kreiszahl \(\pi\) durch zufällig gezogene Punkte innerhalb des Quadrats \([-1, 1]^2\).
 
@@ -33,15 +33,19 @@ Die Wahrscheinlichkeit, dass ein Punkt innerhalb des Einheitskreises liegt, ents
 \mathbb{P}(x^2 + y^2 \leq 1) = \frac{\pi r^2}{4 r^2} = \frac{\pi}{4}
 \]
 
-Da \(z_i = 4 \cdot \mathbf{1}(x_i^2 + y_i^2 \leq 1)\), ist dies ein Bernoulli-Kette mit Erwartungswert:
+Da \(z_i = 4 \cdot \mathbf{1}(x_i^2 + y_i^2 \leq 1)\), ist dies eine Bernoulli-Kette mit Erwartungswert:
 
 \[
 \mathbb{E}[z_i] = 4 \cdot \frac{\pi}{4} = \pi
 \]
 
-Somit ist der Stichprobenmittelwert \(\hat{\pi} = \frac{1}{n} \sum z_i\) eine Schätzung von \(\pi\).
+Somit ist der Stichprobenmittelwert
 
+\[
+\hat{\pi} = \frac{1}{n} \sum z_i
+\]
 
+eine Schätzung von \(\pi\).
 ```{r , echo=T, collapse=T}
 set.seed(123)  # Seed setzen für Reproduzierbarkeit
 k = 8

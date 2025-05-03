@@ -1,0 +1,196 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+# A1. Inversions- und Box-Müller-Methode
+In dieser Aufgabe sollen aus gleichverteilten Zufallszahlen Zufallszahlen beliebiger Verteilung
+gewonnen werden.
+
+## a. Exponentialverteilung und Poissonverteilung
+Erzeugen Sie mit Hilfe der Inversionsmethode aus jeweils \( n = 10000 \) gleichverteilten Zufallszahlen zwischen 0 und 1, \( n = 10000 \) exponentialverteilte bzw. poissonverteilte Zufallszahlen mit Parameter \( \lambda = 3 \). Vergleichen Sie die Verteilungen mit den Verteilungen entsprechender Zufallszahlen, die direkt von R in der gewünschten Verteilung ausgegeben werden (Histogramm, QQ-Plot).
+
+```{r , echo=T, collapse=T}
+set.seed(123)  # Seed setzen für Reproduzierbarkeit
+n <- 10000
+lambda <- 3
+u <- runif(n, 0, 1)
+exp_inv <- ((-1/lambda) * log(1 - u))
+exp_r <- rexp(n, rate = lambda)
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 3))
+hist(exp_inv, breaks = 30, probability = TRUE, main = "Hist: Inversion", xlab = "Werte")
+hist(exp_r, breaks = 30, probability = TRUE, main = "Hist: rexp", xlab = "Werte")
+
+# QQ-Plot: Vergleich von 2 Datensätzen
+qqplot(exp_r, exp_inv, main = "QQ-Plot: rexp vs Inversion")
+abline(0, 1, col = "red") # Diagonaöe
+```
+
+Die erste Darstellung belegt, dass die Inversionsmethode korrekt exponentiell verteilte Zufallszahlen erzeugt.
+
+```{r , echo=T, collapse=T}
+poisson_inver <- function(n, lambda) {  # Produkt von Zufallszahlen (Knuths Algorithmus)
+  x <- numeric(n)
+  for (i in 1:n) {
+    L <- exp(-lambda)
+    p <- 1
+    k <- 0
+    while (p > L) {
+      k <- k + 1
+      p <- p * runif(1)
+    }
+    x[i] <- k - 1
+  }
+  return(x)
+}
+
+pois_inv <- poisson_inver(n, lambda)
+pois_r <- rpois(n, lambda)
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 3))
+hist(pois_inv, breaks = seq(-0.5, max(pois_inv)+0.5, 1), probability = TRUE, main = "Hist: Inversion", xlab = "Werte")
+hist(pois_r, breaks = seq(-0.5, max(pois_r)+0.5, 1), probability = TRUE, main = "Hist: rpois", xlab = "Werte")
+
+# QQ-Plot: Vergleich von 2 Datensätzen
+qqplot(pois_r, pois_inv, main = "QQ-Plot: rpois vs Inversion")
+abline(0, 1, col = "red") # Diagonale
+```
+
+Die zweite Darstellung belegt, dass die Inversionsmethode eine gute Annäherung an die echte Poissonverteilung liefert.
+
+## b. Normalverteilung
+Da sich die Verteilung der Normalverteilung nicht ohne Weiteres umkehren lässt, ist die Inversionsmethode aus a) zur Erzeugung normalverteilter Zufallszahlen aus gleichverteilten Zufallszahlen ungeeignet. Verwenden Sie die Box-Müller Methode: Erzeugen Sie \( n = 10000 \) zweier Tupel \( (u_i, v_i), i = 1, \dots, n \), aus gleichverteilten Zufallszahlen. Durch die Transformationsformel
+
+\[
+z_i = \cos(2\pi u_i)\sqrt{- \ln(v_i)}
+\]
+
+lassen sich nun 10000 normalverteilte Zufallszahlen erzeugen. Vergleichen Sie auch hier die Verteilung mit den entsprechenden Zufallszahlen aus R (Histogramm, QQ-Plot).
+
+
+```{r , echo=T, collapse=T}
+u <- runif(n)
+v <- runif(n)
+z_boxmuller <- cos(2 * pi * u) * sqrt(-log(v))
+z_r <- rnorm(n)
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 3))
+hist(z_boxmuller, breaks = 30, probability = TRUE, main = "Hist: Box-Müller", xlab = "Werte")
+hist(z_r, breaks = 30, probability = TRUE, main = "Hist: rnorm", xlab = "Werte")
+
+# QQ-Plots Normalverteilung
+qqnorm(z_boxmuller, main = "QQ-Plot Box-Müller")
+qqline(z_boxmuller, col = "red")
+
+qqnorm(z_r, main = "QQ-Plot rnorm")
+qqline(z_r, col = "red")
+```
+
+Die Inversionsmethode und die Box-Müller-Methode liefern Ergebnisse, die sehr gut mit den direkten R-Funktionen vergleichbar sind. Die Histogramme und QQ-Plots bestätigen die Übereinstimmung der erzeugten Verteilungen.
+
+# A2. Zufallszahlengeneratoren
+
+In dieser Aufgabe sollen gleichverteilte Zufallszahlen auf unterschiedliche Arten erzeugt werden.  
+Zur Überprüfung der Qualität bilden wir jeweils zweier Tupel \( (z_1, z_2), (z_2, z_3), \dots, (z_{n-1}, z_n) \)  
+und stellen diese in der zweidimensionalen Ebene dar. **Erkennbare Muster sprechen für eine schlechte Qualität der Zufallszahlen.**
+
+## a. Random Decimal Fraction von Random.org
+Lassen Sie sich auf der Seite `Random.org` 10000 echte gleichverteilte Zufallszahlen aus at
+mosphärischem Rauschen erzeugen (`Random Decimal Fraction Generator`)
+
+```{r , echo=T, collapse=T}
+# echte gleichverteilte Zufallszahlen aus atmosphärischem Rauschen
+random_org <- scan("random_org.txt")
+plot(head(random_org, -1), tail(random_org, -1), # Paare von direkt aufeinanderfolgenden Zufallszahlen
+     main = "Random Decimal Fraction Generator", xlab = expression(z[i]), ylab = expression(z[i+1]),
+     pch = 19, col = rgb(0, 0, 0, 0.1))
+```
+
+## b. Mittquadratverfahren
+Erzeugen Sie jeweils 10000 Zufallszahlen mit dem Mittquadrat Verfahren von Neumann mit
+\(k = 8\) mittleren Ziffern.
+
+```{r , echo=T, collapse=T}
+mid_square <- function(n, k = 8) {
+  x <- numeric(n)
+  seed <- 62459921  # 8-stelliger Startwert
+  for (i in 1:n) {
+    square <- seed^2
+    square_str <- as.character(square)
+    
+    # Auffüllen mit Nullen, falls square zu kurz ist
+    while (nchar(square_str) < 2 * k) {
+      square_str <- paste0("0", square_str)
+    }
+    
+    # mittlere k Ziffern extrahieren
+    start <- floor((nchar(square_str) - k) / 2) + 1
+    mid <- substr(square_str, start, start + k - 1)
+    
+    seed <- as.numeric(mid)
+    x[i] <- seed / 10^k # Skaliere auf [0, 1]
+  }
+  return(x)
+}
+
+msq <- mid_square(10000)
+plot(head(msq, -1), tail(msq, -1),
+     main = "Mittquadrat Generator", xlab = expression(z[i]), ylab = expression(z[i+1]),
+     pch = 19, col = rgb(0.2, 0.4, 0.8, 0.1))
+```
+
+## c. Kreativer Generator
+Werden Sie kreativ: Kombinieren Sie die einfachen Generatoren aus der Vorlesung zu einem
+eigenen Zufallszahlgenerator bzw. denken Sie sich etwas völlig anderes aus - der Generator muss
+nicht perfekt sein! Geben Sie Ihrem Generator einen liebevollen Namen und erzeugen 10000
+Zufallszahle
+
+```{r , echo=T, collapse=T}
+chaos <- function(n) {
+  x <- numeric(n)
+  x[1] <- 0.3546  # Startwert
+  for (i in 2:n) {
+    x[i] <- (sin(x[i - 1] * 2 * pi) * cos(i / 20) + 2) %% 1
+  }
+  return(x)
+}
+
+chaos <- chaos(10000)
+plot(chaos[-10000], chaos[-1],
+     main = "Chaos Generator", xlab = expression(z[i]), ylab = expression(z[i+1]),
+     pch = 19, col = rgb(0, 0, 0.4, 0.1))
+
+```
+
+
+## d. Mersenne-Twister und Super-Duper
+Erzeugen Sie mit Hilfe des Mersenne-Twisters (Standard in R) und mit Hilfe eines beliebigen
+weiteren Generators in R (Funktion *RNGkind*) jeweils 10000 Zufallszahlen.
+```{r , echo=T, collapse=T}
+mersenne <- runif(10000) # Standard
+RNGkind("Super-Duper")
+superduper <- runif(10000)
+
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 3))
+plot(head(mersenne, -1), tail(mersenne, -1),
+     main = "Mersenne-Twister", xlab = expression(z[i]), ylab = expression(z[i+1]),
+     pch = 19, col = rgb(0, 0.9, 0, 0.1))
+plot(head(superduper, -1), tail(superduper, -1),
+     main = "Super-Duper", xlab = expression(z[i]), ylab = expression(z[i+1]),
+     pch = 19, col = rgb(0.1, 0.6, 0.6, 0.1))
+```
+
+
+## e. Vergleich der Generatoren
+Vergleichen Sie die erzeugten Zufallszahlen aus a)-d) mit Hilfe entsprechender Plots.
+
+- Random Decimal Fraction: Sehr gute Gleichverteilung, keine Muster sichtbar.
+
+- Mittquadratverfahren: Geringe Dichte und Häufungen im Plot, Zeichen für mangelnde Zufälligkeit.
+
+- Chaos: Erkennbares Muster, nicht als Zufallszahlengenerator geeignet.
+
+- Mersenne-Twister: Sehr gute Gleichverteilung, keine Muster sichtbar.
+
+- Super-Duper: Sehr gute Gleichverteilung, keine Muster sichtbar.

@@ -5,7 +5,7 @@ Aufgabestellung:
 Wir verwenden SIR (Susceptible, Infectious, Recover) Modell
 als *stochastic individual contact model (ICM)*.
 
-## a) Der Verlauf der Verbreitung simulieren
+## a. Der Verlauf der Verbreitung simulieren
 
 Simulieren Sie den Verlauf der Verbreitung in 50 Tagen und stellen
 Sie die Anzahl von infizierbaren, infizierten und immunisierten Personen
@@ -37,7 +37,7 @@ model1 <- icm(param, init, control)
 plot(model1)
 ```
 
-## b) Hygienevorschriften
+## b. Hygienevorschriften
 
 Gehen Sie davon aus, dass zum Zeitpunkt $t_H = 0$ Hygienevorschriften
 erlassen wurden (z.B. Händewaschen, Mundschutz etc.). Dies beeinflusst
@@ -68,7 +68,7 @@ plot(model2, main = "inf.prob = 5%")
 
 Eine höhere Infektionswahrscheinlichkeit ($inf.prob = 10\%$) führt zu einem schnelleren und stärkeren Anstieg der Infektionen. Bei niedriger Wahrscheinlichkeit ($5\%$) verläuft die Ausbreitung deutlich flacher und langsamer.
 
-## c) Kontakseinschränkung
+## c. Kontakseinschränkung
 
 Gehen Sie nun davon aus, dass die Population keine Hygienemaßnahmen
 ergreift, aber zum Zeitpunkt $t_K = 0$ den Kontakt einschränkt. D.h.
@@ -108,7 +108,7 @@ plot(model_c2, main = "d) act.rate = 2, inf.prob = 10%")
 
 - Hygienemaßnahmen und Kontaktbeschränkungen wirken sich jeweils auf die Ansteckungswahrscheinlichkeit (`inf.prob`) und die Begegnungsrate (`act.rate`) aus. Die Abbildungen b) und c) zeigen: Eine Halbierung der `act.rate` hat einen ähnlichen Effekt wie eine Halbierung der `inf.prob`. Wird `act.rate` sogar auf 2 gesenkt (d)), flacht der Verlauf der Infektion deutlich ab.
 
-## d) Kombination aus Hygienemaßnahmen und Kontaktbeschränkungen
+## d. Kombination aus Hygienemaßnahmen und Kontaktbeschränkungen
 
 Kombinieren Sie die Maßnahmen aus b) und c) und vergleichen auch diesen
 Effekt mit Ihren vorherigen Befunden.
@@ -144,7 +144,7 @@ plot(model_d4 , main = "f) act.rate = 2, inf.prob = 5%")
 
 - Die Kombination aus Hygienemaßnahmen und Kontaktbeschränkungen wirkt besonders effektiv – gemeinsam flachen sie die Infektionskurve deutlich stärker ab.
 
-## e) Zeit variieren
+## e. Zeit variieren
 
 Variieren Sie die Zeitpunkte $t_H$ und $t_K$ und setzen den
 Maßnahmen gegebenenfalls auch ein Ende. Vergleichen Sie auch jetzt

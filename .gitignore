@@ -12,3 +12,4 @@ main.log
 main.aux
 figure/
 .Rhistory
+.RData

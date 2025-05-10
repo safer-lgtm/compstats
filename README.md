@@ -8,7 +8,7 @@ Die Inhalte orientieren sich am Buch
 ## Themen des Projekts
 
 - Simulation der Verbreitung von Krankheiten (SIR/SIS)
-- Monte-Carlo-Methoden
+- Monte-Carlo Simulation
 - Simulation von Zufallszahlen
 - Cross Validation
 - Bootstrap-Verfahren

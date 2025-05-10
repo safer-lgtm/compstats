@@ -101,7 +101,7 @@ mosphärischem Rauschen erzeugen (`Random Decimal Fraction Generator`)
 
 ```{r , echo=T, collapse=T}
 # echte gleichverteilte Zufallszahlen aus atmosphärischem Rauschen
-random_org <- scan("random_org.txt")
+random_org <- scan("../data/random_org.txt")
 plot(head(random_org, -1), tail(random_org, -1), # Paare von direkt aufeinanderfolgenden Zufallszahlen
      main = "Random Decimal Fraction Generator", xlab = expression(z[i]), ylab = expression(z[i+1]),
      pch = 19, col = rgb(0, 0, 0, 0.1))

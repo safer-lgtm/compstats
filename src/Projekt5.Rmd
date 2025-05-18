@@ -1,0 +1,84 @@
+# A1. Zentralen Grenzwertsatzes
+Der Zentrale Grenzwertsatz besagt, dass die Verteilung der Durchschnitt einer großen Anzahl von unabhängigen und identisch verteilten Zufallsvariablen näherungsweise normalverteilt ist, unahängig von der ursprünglichen Verteilung der Variablen.
+
+In dieser Aufgabe soll die Aussage des Zentralen Grenzwertsatzes für Bootstrap-Daten überprüft werden.
+
+## a. Simulation der Daten
+Simuliere 50 bzw. 1000 Datensätze mit jeweils 500 gleichverteilten Daten auf [0, 1], speichere die Mittelwerte im Vektor $Means_{sim}$
+
+```{r , echo=T, collapse=T}
+set.seed(123)
+
+N <- 500
+datasets_50 <- replicate(50, runif(N, 0, 1))
+datasets_1000 <- replicate(1000, runif(N, 0, 1))
+
+MeaNs_sim_50 <- apply(datasets_50, 2, mean)
+Means_sim_1000 <- apply(datasets_1000, 2, mean)
+```
+
+## b. Bootstrap
+Simuliere einen weiteren Datensatz mit 500 gleichverteilten Daten auf [0, 1] und erzeuge mit Bootstrap 50 bzw. 1000 Replikationen. Speichere die Mittelwerte der Replikationen im Vektor $Means_{boot}$
+
+```{r , echo=T, collapse=T, warnings=F}
+library(boot)
+
+data <- runif(n, 0, 1) # 500 gleichverteilten Daten
+bootstrap_mean <- function(data, indices) {
+  return(mean(data[indices]))
+}
+
+# Bootstrap-Replikationen
+N_boot_50 <- 50
+N_boot_1000 <- 1000
+
+boot_results_50 <- boot(data = data, statistic = bootstrap_mean, R = N_boot_50)
+Means_boot_50 <- boot_results_50$t
+
+boot_results_1000 <- boot(data = data, statistic = bootstrap_mean, R = N_boot_1000)
+Means_boot_1000 <- boot_results_1000$t
+```
+
+## c. Verteilung der Simulation
+Vergleiche die Histogramme und Boxplots von $Means_{sim}$ und $Means_{boot}$, teste jeweils mit dem Shapiro-Wilk Test auf Normalverteilung. 
+
+
+```{r , echo=T, collapse=T}
+par(mfrow = c(2, 2))
+hist(Means_sim_50, main = "Means_sim 50")
+hist(Means_boot_50, main = "Means_boot 50")
+boxplot(Means_sim_50, main = "Means_sim 50")
+boxplot(Means_boot_50, main = "Means_boot 50")
+
+par(mfrow = c(2, 2))
+hist(Means_sim_1000, main = "Means_sim 1000")
+hist(Means_boot_1000, main = "Means_boot 1000")
+boxplot(Means_sim_1000, main = "Means_sim 1000")
+boxplot(Means_boot_1000, main = "Means_boot 1000")
+
+# Shapiro-Wilk Test
+shapiro.test(Means_sim_50)
+shapiro.test(Means_boot_50)
+shapiro.test(Means_sim_1000)
+shapiro.test(Means_boot_1000)
+```
+Die Ergebnisse der Shapiro-Wilk Tests zeigen, dass sowohl die simulierten Mittelwerte als auch die Bootstrap-Mittelwerte keine signifikante Abweichung von der Normalverteilung aufweisen. Durch die zunehmende Anzahl der Replikationen werden die Verteilungen von beiden Simualtionmethoden die Normalverteilung approximieren.
+
+
+## d. Vergleich von Means mit t-Test
+Vergleiche die Mittelwerte von $Means_{sim}$ und $Means_{boot}$ mit einem t-Test.
+
+```{r , echo=T, collapse=T}
+t.test(Means_sim_50,  Means_boot_50)
+t.test(Means_sim_1000,  Means_boot_1000)
+```
+
+## e. Interpretieren
+Interpretiere und begrunde Deine Beobachtungen.
+
+- Für t-Test Means_sim_50 und Means_boot_50: Der p-Wert ist größer als < 0.05. Das bedeutet,
+dass wir die Nullhypothese nicht verwerfen können, es gibt keinen Unterschied zwischen den Mittelwerten der beiden Gruppen.
+
+- Für t-Test Means_sim_1000 und Means_boot_1000: Der p-Wert ist auch viel kleiner als 0.05, es gibt keinen signifikanten Unterschied zwischen den beiden Daten.
+
+- Größere Stichproben neigen dazu, Unterschiede besser zu erkennen und präzisere Schätzungen zu liefern.

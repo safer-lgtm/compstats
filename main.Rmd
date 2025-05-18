@@ -72,3 +72,9 @@ Name: Safouan Er-Ryfy
 
 ```
 \newpage
+
+#  r. Bootstrap
+```{r child = files_list[5]}
+
+```
+\newpage

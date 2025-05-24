@@ -73,8 +73,15 @@ Name: Safouan Er-Ryfy
 ```
 \newpage
 
-#  r. Bootstrap
+#  5. Bootstrap
 ```{r child = files_list[5]}
+
+```
+\newpage
+
+
+#  6. Shrinkage
+```{r child = files_list[6]}
 
 ```
 \newpage

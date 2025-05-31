@@ -79,9 +79,14 @@ Name: Safouan Er-Ryfy
 ```
 \newpage
 
-
 #  6. Shrinkage
 ```{r child = files_list[6]}
+
+```
+\newpage
+
+#  7. PCA- PLS Regression
+```{r child = files_list[7]}
 
 ```
 \newpage

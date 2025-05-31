@@ -1,0 +1,198 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# A1. PCA (Principle Component Analysis)
+
+In dieser ¨Ubung geht es darum die PCA- bzw. PLS-Regression durchzuf¨uhren und mit den Ergeb-
+nissen der Shrinkage-Methoden zu vergleichen. Wir verwenden den Datensatz prostate.
+
+PCA löst dieses Problem, indem es eine Dimensionsreduktion durchführt, um die wichtigsten Merkmale zu extrahieren und eine kompaktere Darstellung der Daten zu erhalten. Die neue Hauptkomponenten sind linear unabhängig und sind in der Reihenfolgen ihrer Bedeutung geordnet, wobei die erste Komponente die größe Variation erklärt.
+
+## a. Korrelationsmatrix
+Erstelle eine Korrelationsmatrix  für die Variablen UV lcavol, lweight, age, lbph, svi, lcp, gleason und pgg45. Welche Variablen korrelieren stark mit einander? Interpretieren!
+
+```{r}
+#install.packages("reshape2")
+library(reshape2)
+library(ggplot2)
+
+load("../data/prostate.rdata")
+UV <- c("lcavol", "lweight", "age", "lbph", "svi", "lcp", "gleason", "pgg45")
+AV <- "lpsa"
+
+cor_matrix <- cor(prostate[, UV])
+melted <- melt(cor_matrix)
+# Plot
+ggplot(data = melted, aes(x = Var1, y = Var2, fill = value, label = value)) + 
+  geom_tile() +
+  geom_text(aes(label = round(value, 2))) +
+  scale_fill_gradient()
+```
+
+Variablen mit starke Korrelation:
+
+  - gleason (ein Maß für die Aggressivität des Krebses) und pgg45 (Prozentsatz an Grad 4 oder 5 Zellen): $corr=0.75$. Ein höherer Prozentsatz an hochgradigen Zellen (Grad 4 und 5) führt zu einem höheren Gleason-Score, der die Aggressivität des Tumors anzeigt.
+  
+  - lcavol (logarithmisches Volumen des Krebses) und lcp (logarithmische Kapselpenetration): $corr=0.68$. Die beide Variable sind maße für die Größe und Ausbreitung des Krebses. Es ist zu erwarten, dass größere Tumore eher in die Kapsel eindringen würden.
+
+  - lcp und svi (seminale Bläschinvasion) $corr=0.67$. Wenn der Tumor die Kapsel durchdringt, ist es wahrscheinlich, dass er auch in die seminalen Bläschen eindringt.
+  
+  - lcp und pgg45: $corr=0.63$. Die höhe Korrelation zwischen diesen beiden Variablen zeigt, dass: Tumore, die die Kapsel durchdringen, enthalten wahrscheinlich mehr hochgradige Zellen.
+
+## b. PCA-Regression 
+
+Führe eine PCA-Regression mit den UV lcavol, lweight, age, lbph, svi, lcp, gleason und pgg45
+und der AV lpsa durch (`pcr` aus dem Paket `pls`). Wähle die Optionen so, dass die Variablen vor
+der PCA-Regression **standardisiert** werden, sowie der Fehler einer 10-fachen Cross-Validation für jede Anzahl von Hauptkomponenten verwendet wird.
+
+```{r install, echo = FALSE, include=FALSE}
+library(pls)
+library(dplyr)
+library(glmnet)
+library(caret)
+
+pca.fit  <- pcr(lpsa ~ lcavol + lweight + age + lcp + lbph + svi + gleason + pgg45,
+                data = prostate, 
+                scale = TRUE, # Normalization
+                validation = "CV",
+                segments = 10) # 10-fache CV
+summary(pca.fit)
+```
+- RMSEP = Root Mean Squared error of Prediction 
+
+## c. Vergleich der Fehler der Cross-Validations
+
+- Der kleinste CV-Fehlerwert aus der Liste der RMSEP ist 0.73, der bei 8 Komponente erreicht wird.
+
+- Die PCA-Modellierung zeigt, dass die Cross-Validation-Fehlerwerte mit zunehmender Anzahl von Hauptkomponenten tendenziell sinken. 
+- Der kleinste Fehler wird bei 8 Komponenten erreicht, was darauf hindeutet, dass das Modell mit allen 8 Hauptkomponenten die beste Vorhersageleistung aufweist, basierend auf der Cross-Validation.
+
+## d. Plot der MSE-Werte
+
+Erstelle einen Plot der MSE-Werte für die jeweilige Hauptkomponentenanzahl und wähle eine optimale Anzahl (Begrunde!).
+
+```{r}
+plot(pca.fit, "validation", val.type = "MSEP", legendpos = "topright")
+```
+
+- Die Anzahl der Komponenten mit dem kleinsten MSE ist in diesem Fall $r = 8$. Allerdings verändern sich die MSE-Werte ab einer Anzahl von 3 Komponenten nicht mehr signifikant.
+
+- Von daher nehmen wir $r = 3$ als optimale Anzahl der Komponenten an, um die Dimensionalität zu reduzieren und dennoch eine ähnliche Vorhersagegenauigkeit zu erzielen.
+
+
+## e. Cross-Validation von PCA und Schrinkage Methoden
+
+Führe mit der in d) gefunden Anzahl eine einfache Cross-Validation  durch (verwende die Variable train) und vergleiche den MSE-Wert mit den beiden MSE-Werten der Shrinkage Methoden bei gleicher Cross-Validation (letztes Übungsblatt).
+
+```{r}
+# Teile den Datensatz in Trainings- und Testdaten auf
+train_indices <- which(prostate$train == TRUE)
+test_indices <- which(prostate$train == FALSE)
+
+train_data <- prostate[train_indices, ]
+test_data <- prostate[test_indices, ]
+
+X_train <- as.matrix(prostate[train_indices, UV])
+y_train <- prostate[train_indices, AV]
+
+X_test <- as.matrix(prostate[test_indices, UV])
+y_test <- prostate[test_indices, AV]
+
+# PCA mit 3 Komponenten
+pca_model <- pcr(lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45,
+                 data = train_data, 
+                 scale = TRUE, 
+                 validation = "CV", 
+                 ncomp = 3)
+# CV-Fehler für PCA
+pca_cv_errors <- RMSEP(pca_model)$val[1, , ]
+pca_optimal_components <- 3
+pca_mse <- pca_cv_errors[pca_optimal_components]
+
+# Führe Ridge Regression mit Cross-Validation durch
+lambda_values <- 10^seq(3, -2, by = -.1)
+ridge_cv <- cv.glmnet(X_train, y_train, alpha = 0, lambda = lambda_values, type.measure = "mse")
+ridge_mse_cv <- min(ridge_cv$cvm)
+
+# Führe Lasso Regression mit Cross-Validation durch
+lasso_cv <- cv.glmnet(X_train, y_train, alpha = 1, lambda = lambda_values, type.measure = "mse")
+lasso_mse_cv <- min(lasso_cv$cvm)
+
+# Ausgabe der Ergebnisse
+cat("MSE der PCA mit 3 Komponenten:", pca_mse, "\n")
+cat("MSE der Ridge Regression:", ridge_mse_cv, "\n")
+cat("MSE der Lasso Regression:", lasso_mse_cv, "\n")
+
+```
+
+- PCA reduziert die Komplexität, verliert aber wichtige Informationen, was den Fehler erhöht.
+
+- Ridge minimiert den Fehler durch gleichmäßiges Schrumpfen der Koeffizienten.
+
+- Lasso ist sparsamer, hat aber einen etwas höheren Fehler als Ridge, da es Variablen komplett entfernt.
+
+
+# A2. PLS: Partial Least Squares
+
+## a. PLS-Regression
+Führe eine PLS-Regression mit den UV lcavol, lweight, age, lbph, svi, lcp, gleason und pgg45
+und der AV lpsa durch (`plsr` aus dem Paket `pls`). Wähle die Optionen so, dass die Variablen vor
+der PLS-Regression standardisiert werden, sowie der Fehler einer 10-fachen Cross-Validation für
+jede Anzahl von Hauptkomponenten verwendet wird.
+
+```{r}
+plsr_model <- plsr(lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45, 
+                   data = prostate, 
+                   scale = TRUE, 
+                   validation = "CV", 
+                   segments = 10)
+summary(plsr_model)
+```
+
+
+## b. Vergleich der Fehler der Cross-Validations
+
+- Der RMSEP-Wert ist am niedrigsten bei 5 Komponenten (0.7340), was darauf hinweist, dass das Modell mit 5 Komponenten die beste Vorhersagegenauigkeit hat.
+
+## c. Plot der MSE vs Hauptkomponentenanzahl
+
+```{r}
+validationplot(plsr_model, val.type = "MSEP", legendpos = "topright")
+```
+
+
+- Der Plot zeigt, dass obwohl die 5-Komponenten-Modell der beste Leistung hat, gibt es eigentlich keine signifikante Unterschied zwischen der Modell mit 2, 3 und 4 Komponenten. In diesem Falls werde ich eher ein einfacheres Modell mit 3 Komponenten nehmen.
+
+## d. Cross-Validation
+
+```{r}
+train_indices <- which(prostate$train == TRUE)
+test_indices <- which(prostate$train == FALSE)
+
+train_data <- prostate[train_indices, ]
+n_comp = 3
+pls_model <- plsr(lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45, 
+                  data = train_data, 
+                  scale = TRUE, 
+                  validation = "CV", 
+                  ncomp = n_comp)
+
+# CV-Fehler für PCA
+pls_cv_errors <- RMSEP(pls_model)$val[1, , ]
+pls_optimal_components <- n_comp
+pls_mse <- pls_cv_errors[pls_optimal_components]
+cat("MSE der PLS mit 3 Komponenten:", pls_mse, "\n")
+cat("MSE der Ridge Regression:", ridge_mse_cv, "\n")
+cat("MSE der Lasso Regression:", lasso_mse_cv, "\n")
+```
+
+- Mit genau 3 Komponenten hat das PLS Modell eine kleinere MSE ($MSE_{pls} = 0.789, \space MSE_{pca} = 0.898$). 
+
+- Hauptunterschied zwischen PCA und PLS: 
+
+    - PCA berücksichtigt nur die Variation der unabhängigen Variablen, während PLS sowohle die Variation der unabhängigen als auch der abhängigen Variation berücksichtigt.
+    
+    - PCA wird in Datenreduktion und zur Visualisierung komplexer Datenstrukturen verwendet, währen PLS häufig in der Regression und in Vorhersagenmodellen verwendet wird, insbesondere wenn Multikoliniearität zwischen Variablen auftreten.

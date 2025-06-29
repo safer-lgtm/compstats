@@ -8,83 +8,107 @@ In dieser Aufgabe sollen aus gleichverteilten Zufallszahlen Zufallszahlen belieb
 gewonnen werden.
 
 ## a. Exponentialverteilung und Poissonverteilung
-Erzeugen Sie mit Hilfe der Inversionsmethode aus jeweils \( n = 10000 \) gleichverteilten Zufallszahlen zwischen 0 und 1, \( n = 10000 \) exponentialverteilte bzw. poissonverteilte Zufallszahlen mit Parameter \( \lambda = 3 \). Vergleichen Sie die Verteilungen mit den Verteilungen entsprechender Zufallszahlen, die direkt von R in der gewünschten Verteilung ausgegeben werden (Histogramm, QQ-Plot).
+Erzeugen Sie mit Hilfe der Inversionsmethode aus jeweils $n = 10000$ gleichverteilten Zufallszahlen zwischen 0 und 1, $n = 10000$ exponentialverteilte bzw. poissonverteilte Zufallszahlen mit Parameter Lambda = 3. Vergleichen Sie die Verteilungen mit den Verteilungen entsprechender Zufallszahlen, die direkt von R in der gewünschten Verteilung ausgegeben werden (Histogramm, QQ-Plot).
 
+Inversionsmethode auf Exponentialverteilungsfunktion mit Parameter lambda=3
+Verteilungsfunktion: F(x)=1-exp(-lambda*x)
 ```{r , echo=T, collapse=T}
 set.seed(123)  # Seed setzen für Reproduzierbarkeit
 n <- 10000
 lambda <- 3
-u <- runif(n, 0, 1)
-exp_inv <- ((-1/lambda) * log(1 - u))
+
+u <- runif(n)
+# Es ist -log(1-u)/lambda aber da 1-u gleichverteilt auf u[0,1] schreibt man 
+# -log(u)/lambda
+exp_inv <- -log(u) / lambda
+
+# rexp() erzeugt Zufallzahlen aus der Exponentialverteilung 
 exp_r <- rexp(n, rate = lambda)
 
-par(mfrow = c(2, 2), mar = c(4, 4, 3, 3))
-hist(exp_inv, breaks = 30, probability = TRUE, main = "Hist: Inversion", xlab = "Werte")
-hist(exp_r, breaks = 30, probability = TRUE, main = "Hist: rexp", xlab = "Werte")
+# Histogramm + QQ-Plot
+hist(exp_inv, probability = TRUE, col = "skyblue", main = "Exponentialverteilung (Inversion)")
+# Hier wird die geschätzte Dichte der rexp-Daten um zu zeigen, wie gut beide
+# Verteilungen übereinstimmen
+lines(density(exp_r), col = "red")
 
-# QQ-Plot: Vergleich von 2 Datensätzen
-qqplot(exp_r, exp_inv, main = "QQ-Plot: rexp vs Inversion")
-abline(0, 1, col = "red") # Diagonaöe
+qqplot(exp_r, exp_inv)
+abline(0, 1, col = "red")
+
 ```
 
-Die erste Darstellung belegt, dass die Inversionsmethode korrekt exponentiell verteilte Zufallszahlen erzeugt.
+Histogramm:
+
+- Wir können einfach sehen, dass die Inversionsstichprobe folgt derselben Verteilung wie die rexp() -Stichprobe.
+
+- Beide entsprechen optisch der theoretisch Expontentialdichte
+
+
+QQ Plot:
+
+- Wenn die Punkte auf der roten Linie liegen => (x=y) => Die beiden Verteilungen stimmen überein
+
 
 ```{r , echo=T, collapse=T}
-poisson_inver <- function(n, lambda) {  # Produkt von Zufallszahlen (Knuths Algorithmus)
+poisson_inv <- function(n, lambda) {
+  u <- runif(n)
   x <- numeric(n)
+  
   for (i in 1:n) {
-    L <- exp(-lambda)
-    p <- 1
     k <- 0
-    while (p > L) {
+    p <- exp(-lambda)
+    F <- p
+    while (u[i] > F) {
       k <- k + 1
-      p <- p * runif(1)
+      #  p/p-1=lamnda/k => p=(p-1)*lambda/k
+      # F(X=k)= F(X=k-1) +P(X=k)
+      
+      p <- p * lambda / k
+      F <- F + p
     }
-    x[i] <- k - 1
+    x[i] <- k
   }
   return(x)
 }
 
-pois_inv <- poisson_inver(n, lambda)
+pois_gen <- poisson_inv(n, lambda)
 pois_r <- rpois(n, lambda)
 
-par(mfrow = c(2, 2), mar = c(4, 4, 3, 3))
-hist(pois_inv, breaks = seq(-0.5, max(pois_inv)+0.5, 1), probability = TRUE, main = "Hist: Inversion", xlab = "Werte")
-hist(pois_r, breaks = seq(-0.5, max(pois_r)+0.5, 1), probability = TRUE, main = "Hist: rpois", xlab = "Werte")
+# Histogramm + QQ-Plot
+hist(pois_gen, col = "lightblue", breaks = 50, main = "Poisson (Inversion)")
+hist(pois_r, col = "red", breaks = 50, main = "Poisson In R")
+legend("topright", legend = c("Inversion", "rpois"), fill = c("lightblue", "red"))
 
-# QQ-Plot: Vergleich von 2 Datensätzen
-qqplot(pois_r, pois_inv, main = "QQ-Plot: rpois vs Inversion")
-abline(0, 1, col = "red") # Diagonale
+qqplot(pois_r, pois_gen)
+abline(0, 1, col = "blue")
 ```
 
-Die zweite Darstellung belegt, dass die Inversionsmethode eine gute Annäherung an die echte Poissonverteilung liefert.
+- Insgesamt demonstrieren beide Grafiken vor allem Histgramme eine gute Übereinstimmugen zwischen der beiden funktionen pois_gen und pois_r
+
+- ABER bei 10000 Punkten überlappen in QQ-Plot viele Punkte in diskreten Verteilungen wie der Poisson-Verteilunge stark. Dehalb ist die Histogramme eine bessere Methode um das zu demonstrieren.
 
 ## b. Normalverteilung
-Da sich die Verteilung der Normalverteilung nicht ohne Weiteres umkehren lässt, ist die Inversionsmethode aus a) zur Erzeugung normalverteilter Zufallszahlen aus gleichverteilten Zufallszahlen ungeeignet. Verwenden Sie die Box-Müller Methode: Erzeugen Sie \( n = 10000 \) zweier Tupel \( (u_i, v_i), i = 1, \dots, n \), aus gleichverteilten Zufallszahlen. Durch die Transformationsformel
+Da sich die Verteilung der Normalverteilung nicht ohne Weiteres umkehren lässt, ist die Inversionsmethode aus a) zur Erzeugung normalverteilter Zufallszahlen aus gleichverteilten Zufallszahlen ungeeignet. Verwenden Sie die Box-Müller Methode: . Durch die Transformationsformel
 
-\[
-z_i = \cos(2\pi u_i)\sqrt{- \ln(v_i)}
-\]
+z_i = cos(2*pi u_i) sqrt{- ln(v_i)}
 
 lassen sich nun 10000 normalverteilte Zufallszahlen erzeugen. Vergleichen Sie auch hier die Verteilung mit den entsprechenden Zufallszahlen aus R (Histogramm, QQ-Plot).
 
 
 ```{r , echo=T, collapse=T}
-u <- runif(n)
-v <- runif(n)
-z_boxmuller <- cos(2 * pi * u) * sqrt(-log(v))
-z_r <- rnorm(n)
+n<-10000
+u1 <- runif(n)
+u2 <- runif(n)
+# Wir können durch diese Transformation Zufallzahlen generieren die normalverteilt sind
+# Das nennen wir Box-Müller-Transformation
+z <- sqrt(-2 * log(u1)) * cos(2 * pi * u2)
+norm_r <- rnorm(n)
 
-par(mfrow = c(2, 2), mar = c(4, 4, 3, 3))
-hist(z_boxmuller, breaks = 30, probability = TRUE, main = "Hist: Box-Müller", xlab = "Werte")
-hist(z_r, breaks = 30, probability = TRUE, main = "Hist: rnorm", xlab = "Werte")
+# Vergleich
+hist(z, probability = TRUE, col = "lightgreen", main = "Normalverteilung (Box-Müller)")
+lines(density(norm_r), col = "blue")
 
-# QQ-Plots Normalverteilung
-qqnorm(z_boxmuller, main = "QQ-Plot Box-Müller")
-qqline(z_boxmuller, col = "red")
-
-qqnorm(z_r, main = "QQ-Plot rnorm")
-qqline(z_r, col = "red")
+qqplot(norm_r, z)
+abline(0, 1, col = "red")
 ```
 
 Die Inversionsmethode und die Box-Müller-Methode liefern Ergebnisse, die sehr gut mit den direkten R-Funktionen vergleichbar sind. Die Histogramme und QQ-Plots bestätigen die Übereinstimmung der erzeugten Verteilungen.
@@ -102,42 +126,52 @@ mosphärischem Rauschen erzeugen (`Random Decimal Fraction Generator`)
 ```{r , echo=T, collapse=T}
 # echte gleichverteilte Zufallszahlen aus atmosphärischem Rauschen
 random_org <- scan("../data/random_org.txt")
-plot(head(random_org, -1), tail(random_org, -1), # Paare von direkt aufeinanderfolgenden Zufallszahlen
-     main = "Random Decimal Fraction Generator", xlab = expression(z[i]), ylab = expression(z[i+1]),
-     pch = 19, col = rgb(0, 0, 0, 0.1))
+# x=(x1,....,x9999)
+# y=(x2,....,x10000)
+# random[-10000] alle Element außer dem 10000
+# random[-1] alle Elemente außer dem ersten
+plot(random_org[-10000], random_org[-1], main = "random.org", pch = 20)
 ```
 
+- Die Punkte sind gleichmäßig über dem Quadrat verteilt, ohne sichbare Linien, Muster oder Gitter
+Es gibt keine offensichtliche Struktur, also keine Korrelation zwischen benachbarten Werten
+=> Sehr gut verteilte unabhängige Zahlen
+
 ## b. Mittquadratverfahren
-Erzeugen Sie jeweils 10000 Zufallszahlen mit dem Mittquadrat Verfahren von Neumann mit
-\(k = 8\) mittleren Ziffern.
+Erzeugen Sie jeweils 10000 Zufallszahlen mit dem Mittquadrat Verfahren von Neumann mit k=8 mittleren Ziffern.
 
 ```{r , echo=T, collapse=T}
-mid_square <- function(n, k = 8) {
+mid_square <- function(seed, n, k = 8) {
   x <- numeric(n)
-  seed <- 62459921  # 8-stelliger Startwert
+  
   for (i in 1:n) {
-    square <- seed^2
-    square_str <- as.character(square)
+    sq <- seed^2
+    #%0*s 
+    #%S Das ist String Platzhalter => as.character(sq)
+    #* Die Breite Anzahl Stellen => 2*k
+    # 0 Wenn der String zu Kurz ist fülle von links mit Nullen
+    sq_str <- sprintf("%0*s", 2 * k, as.character(sq))  
     
-    # Auffüllen mit Nullen, falls square zu kurz ist
-    while (nchar(square_str) < 2 * k) {
-      square_str <- paste0("0", square_str)
+    # Mittlere k Ziffern extrahieren
+    start <- floor((nchar(sq_str) - k) / 2) + 1
+    end <- start + k - 1
+    mid_str <- substr(sq_str, start, end)
+    
+    # Überprüfen, ob mid_str rein aus Nullen besteht
+    if (mid_str == paste(rep("0", k), collapse = "")) {
+      warning("Mittquadrat-Sequenz ist abgestorben (nur noch Nullen).")
+      break
     }
     
-    # mittlere k Ziffern extrahieren
-    start <- floor((nchar(square_str) - k) / 2) + 1
-    mid <- substr(square_str, start, start + k - 1)
-    
-    seed <- as.numeric(mid)
-    x[i] <- seed / 10^k # Skaliere auf [0, 1]
+    seed <- as.numeric(mid_str)
+    x[i] <- seed / (10^k)
   }
+  
   return(x)
 }
 
-msq <- mid_square(10000)
-plot(head(msq, -1), tail(msq, -1),
-     main = "Mittquadrat Generator", xlab = expression(z[i]), ylab = expression(z[i+1]),
-     pch = 19, col = rgb(0.2, 0.4, 0.8, 0.1))
+x_mid <- mid_square(12345678, 10000, 8)
+plot(x_mid[-10000], x_mid[-1], main = "Mittquadrat", pch = 20)
 ```
 
 ## c. Kreativer Generator
@@ -147,20 +181,19 @@ nicht perfekt sein! Geben Sie Ihrem Generator einen liebevollen Namen und erzeug
 Zufallszahle
 
 ```{r , echo=T, collapse=T}
-chaos <- function(n) {
+xorina <- function(seed, n) {
   x <- numeric(n)
-  x[1] <- 0.3546  # Startwert
-  for (i in 2:n) {
-    x[i] <- (sin(x[i - 1] * 2 * pi) * cos(i / 20) + 2) %% 1
+  for (i in 1:n) {
+    seed <- bitwXor(seed, bitwShiftL(seed, 13))
+    seed <- bitwXor(seed, bitwShiftR(seed, 17))
+    seed <- bitwXor(seed, bitwShiftL(seed, 5))
+    x[i] <- (seed %% 1e6) / 1e6
   }
   return(x)
 }
 
-chaos <- chaos(10000)
-plot(chaos[-10000], chaos[-1],
-     main = "Chaos Generator", xlab = expression(z[i]), ylab = expression(z[i+1]),
-     pch = 19, col = rgb(0, 0, 0.4, 0.1))
-
+x_xorina <- xorina(123456789, 10000)
+plot(x_xorina[-10000], x_xorina[-1], main = "Xorina Generator", pch = 20)
 ```
 
 
@@ -187,9 +220,7 @@ Vergleichen Sie die erzeugten Zufallszahlen aus a)-d) mit Hilfe entsprechender P
 
 - Random Decimal Fraction: Sehr gute Gleichverteilung, keine Muster sichtbar.
 
-- Mittquadratverfahren: Geringe Dichte und Häufungen im Plot, Zeichen für mangelnde Zufälligkeit.
-
-- Chaos: Erkennbares Muster, nicht als Zufallszahlengenerator geeignet.
+- Mittquadratverfahren: Geringe Dichte und bzw. Lücken im Plot, Zeichen für mangelnde Zufälligkeit.
 
 - Mersenne-Twister: Sehr gute Gleichverteilung, keine Muster sichtbar.
 

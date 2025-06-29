@@ -22,15 +22,15 @@ library(EpiModel)
 
 ```{r , echo = T, collapse = TRUE, out.width="100%"}
 
-param <- param.icm(inf.prob = 0.1,
-                   act.rate = 10,
-                   rec.rate = 1/14,
-                   a.rate = 1/100,
-                   ds.rate = 1/90,
-                   di.rate = 2/90,
-                   dr.rate = 1/90)
+param <- param.icm(inf.prob = 0.1, # Ansteckungswahrscheinlichkeit
+                   act.rate = 10, # Begegnungsrate
+                   rec.rate = 1/14, # Erholungsrate
+                   a.rate = 1/100, # Geburtsrate
+                   ds.rate = 1/90, # infizierbare Todesrate
+                   di.rate = 2/90, # infizierten Todesrate
+                   dr.rate = 1/90) # immunen Tidesrate
 
-init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+init <- init.icm(s.num = 4990, i.num = 10, r.num = 0)
 control <- control.icm(type = "SIR", nsteps = 50)
 
 model1 <- icm(param, init, control)
@@ -55,12 +55,12 @@ param <- param.icm(inf.prob = 0.05,
                    di.rate = 2/90,
                    dr.rate = 1/90)
 
-init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+init <- init.icm(s.num = 4990, i.num = 10, r.num = 0)
 control <- control.icm(type = "SIR", nsteps = 50)
 
 model2 <- icm(param, init, control)
 
-par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
+#par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
 plot(model1, main = "inf.prob = 10%")
 plot(model2, main = "inf.prob = 5%")
 
@@ -92,13 +92,13 @@ param2 <- param.icm(inf.prob = 0.1,
                    di.rate = 2/90,
                    dr.rate = 1/90)
 
-init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+init <- init.icm(s.num = 4990, i.num = 10, r.num = 0)
 control <- control.icm(type = "SIR", nsteps = 50)
 
 model_c1 <- icm(param1, init, control)
 model_c2 <- icm(param2, init, control)
 
-par(mfrow = c(2, 2))
+#par(mfrow = c(2, 2))
 
 plot(model1 , main = "a) act.rate = 10, inf.prob = 10%")
 plot(model2 , main = "b) act.rate = 10, inf.prob = 5%")
@@ -131,13 +131,13 @@ param4 <- param.icm(inf.prob = 0.05,
                    di.rate = 2/90,
                    dr.rate = 1/90)
 
-init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+init <- init.icm(s.num = 4990, i.num = 10, r.num = 0)
 control <- control.icm(type = "SIR", nsteps = 50)
 
 model_d3 <- icm(param3, init, control)
 model_d4 <- icm(param4, init, control)
 
-par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
+#par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
 plot(model_d3 , main = "e) act.rate = 5, inf.prob = 5%")
 plot(model_d4 , main = "f) act.rate = 2, inf.prob = 5%")
 ```
@@ -150,54 +150,65 @@ Variieren Sie die Zeitpunkte $t_H$ und $t_K$ und setzen den
 Maßnahmen gegebenenfalls auch ein Ende. Vergleichen Sie auch jetzt
 die Verläufe und interpretieren diese.
 
-```{r, include = F}
-change_inf.prob <- 10
-change_act.rate <- 20
+Lass uns zwei Phasen definieren Phase1 Tage 0-20 keine Maßnehmen ergriffen
+und Phase2 Tage 21-50 Hygienenmaßnahmen aktiviert(inf.prob=0.05)
 
-lists <- list(
-  list(
-    at = change_inf.prob,
-    param = list(inf.prob = 0.05)
-  ),
-  list(
-    at = change_act.rate,
-    param = list(act.rate = 2)
-  )
+
+```{r}
+# Simulation der ersten Phase mit SIR Modell
+para_phase1<-param.icm(
+  inf.prob = 0.1,
+  act.rate = 10,  
+  rec.rate = 1/14,
+  a.rate =0.01,
+  ds.rate = 1/90,
+  di.rate = 2/90,
+  dr.rate = 1/90
 )
 
-param5 <- param.net(inf.prob =  0.1,
-                   act.rate =  10,
-                   param.updater.list = lists,
-                   rec.rate = 1/14,
-                   a.rate = 1/90,
-                   ds.rate = 1/90,
-                   di.rate = 2/90,
-                   dr.rate = 1/90)
+init1<-init.icm(s.num =4990, i.num =10, r.num =0)
+control1<-control.icm(type = "SIR",nsteps = 10,nsims = 1)
+mod_pahse1<- icm(para_phase1,init1,control1) 
 
-nw <- network_initialize(n = 50) # Es gibt noch keine Kanten (also keine Kontakte)
-
-# Ein stochastisches Netzwerkmodell
-est <- netest(
-  nw, formation = ~edges, # Nur Kontakte sind relevant
-  target.stats = 50, # Im Schnitt hat jede Person 1 Kontakt
-  coef.diss = dissolution_coefs(~offset(edges), 10, 0),
-  verbose = FALSE
+# Simulation der zweiten Phase
+para_phase2<-param.icm(
+  inf.prob = 0.05,
+  act.rate = 2,  
+  rec.rate = 1/14,
+  a.rate =0.01,
+  ds.rate = 1/90,
+  di.rate = 2/90,
+  dr.rate = 1/90
 )
 
-init <- init.net(s.num = 5000, i.num = 10, r.num = 0)
-control <- control.net(type = "SIR", nsteps = 50, verbose = FALSE)
+init2<-init.icm(
+  s.num=as.numeric(mod_pahse1$epi$s.num[10,]),
+  i.num=as.numeric(mod_pahse1$epi$i.num[10,]),
+  r.num=as.numeric(mod_pahse1$epi$r.num[10,])
+)
+# 30, da wir von 20 bis 50 in der zweiten Phase haben.
+control2 <- control.icm(type = "SIR",nsteps = 40,nsims = 1)
+mod_pahse2 <- icm(para_phase2,init2, control2)
 
-model_e5 <- netsim(est, param5, init, control)
-plot(model_e5, main = "g) inf.prob = 5%, act.rate = 2")
-abline(v = change_inf.prob, lty = 2,col = "gray")
-text(x=change_inf.prob-0.5, y=40, srt=90, 't_H')
-abline(v = change_act.rate, lty = 2,col = "gray")
-text(x=change_act.rate-0.5, y=40, srt=90, 't_K')
+
+#Lass uns jetzt die Simulationen mit einander verknüfen um das Variieren zu plotten
+
+# Wir haben das mit [[1]] um die Inhalt der Dataframe zu extrahieren
+s_combined<- c(mod_pahse1$epi$s.num[[1]],mod_pahse2$epi$s.num[[1]])
+i_combined<- c(mod_pahse1$epi$i.num[[1]],mod_pahse2$epi$i.num[[1]])
+r_combined<- c(mod_pahse1$epi$r.num[[1]],mod_pahse2$epi$r.num[[1]])
+
+plot(1:50, s_combined, type = "l", col = "blue", ylim = c(0, 5000),
+     ylab = "Anzahl Personen", xlab = "Tage", lwd = 2)
+lines(1:50, i_combined, col = "red", lwd = 2)
+lines(1:50, r_combined, col = "green", lwd = 2)
+abline(v = 10, col = "black", lty = 2, lwd = 2)
+legend("right", legend = c("Susceptible", "Infected", "Recovered"),
+       col = c("blue", "red", "green"), lty = 1, lwd = 2)
+
 ```
+- Ab dem Zeitpunkt `t_H = t_K = 10` wurden die Ansteckungswahrscheinlichkeit (`inf.prob`) von $10\%$ auf $5\%$ und zusätzlich eine Reduktion der Begegungsrate (`act.rate`) von 10 auf 2 gesenkt. Beide Maßnahmen zusammen zeigen eine deutlich stärkere Wirkung.
 
-- Ab dem Zeitpunkt `t_H = 10` wurde die Ansteckungswahrscheinlichkeit (`inf.prob`) von $10\%$ auf $5\%$ gesenkt. Ab `t_K = 20` kam zusätzlich eine Reduktion der Kontaktfrequenz (`act.rate`) von 10 auf 2 hinzu. Beide Maßnahmen zusammen zeigen eine deutlich stärkere Wirkung.
-
-\newpage
 
 # A2. SIS Modell
 
@@ -219,10 +230,10 @@ param <- param.icm(inf.prob =  0.1,
                    di.rate = 2/90,
                    dr.rate = 1/90)
 
-init <- init.icm(s.num = 5000, i.num = 10, r.num = 0)
+init <- init.icm(s.num = 4990, i.num = 10, r.num = 0)
 control <- control.icm(type = "SIS", nsteps = 50)
 
-par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
+#par(mfrow = c(2, 1), mar = c(4, 4, 4, 4))
 sis_model <- icm(param, init, control)
 plot(model1, main="SIR Model")
 plot(sis_model, main="SIS Model")

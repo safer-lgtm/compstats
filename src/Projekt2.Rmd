@@ -1,144 +1,113 @@
 # A1. Monte Carlo Approximation von Kreiszahl
 
-In dieser Übung soll die Kreiszahl \(\pi\) approximiert werden.
+In dieser Übung soll die Kreiszahl Kreiszahl approximiert werden.
 
-Erzeuge hierzu \(n\) Tupel \((x_i, y_i), \, i = 1, \dotsc, n\) mit
-
-\[
-x_i, y_i \sim \mathcal{U}([-1, 1])
-\]
-
-und definiere daraus die Variable
-
-\[
-z_i = 4 \cdot \mathbf{1}(x_i^2 + y_i^2 \leq 1).
-\]
-
-Hierbei ist \(\mathbf{1}\) die Indikatorfunktion, die \(1\) liefert, wenn die Bedingung erfüllt ist, und \(0\) sonst.
-
-Approximiert wird \(\pi\) durch
-
-\[
-\hat{\pi} = \frac{1}{n} \sum_{i=1}^{n} z_i.
-\]
-
-- Erzeuge eine Tabelle, in der für \(n = 10^k\), \(k \in \{1, \dotsc, 8\}\) jeweils die Approximation \(\hat{\pi}\) und der absolute Fehler \(|\pi - \hat{\pi}|\) dargestellt werden.
-- Stimmt die Genauigkeit mit der Tschebyscheff-Schätzung aus dem Video überein?
-
-In dieser Aufgabe schätzen wir die Kreiszahl \(\pi\) durch zufällig gezogene Punkte innerhalb des Quadrats \([-1, 1]^2\).
-
-Die Wahrscheinlichkeit, dass ein Punkt innerhalb des Einheitskreises liegt, entspricht dem Verhältnis der Flächen:
-
-\[
-\mathbb{P}(x^2 + y^2 \leq 1) = \frac{\pi r^2}{4 r^2} = \frac{\pi}{4}
-\]
-
-Da \(z_i = 4 \cdot \mathbf{1}(x_i^2 + y_i^2 \leq 1)\), ist dies eine Bernoulli-Kette mit Erwartungswert:
-
-\[
-\mathbb{E}[z_i] = 4 \cdot \frac{\pi}{4} = \pi
-\]
-
-Somit ist der Stichprobenmittelwert
-
-\[
-\hat{\pi} = \frac{1}{n} \sum z_i
-\]
-
-eine Schätzung von \(\pi\).
 ```{r , echo=T, collapse=T}
-set.seed(123)  # Seed setzen für Reproduzierbarkeit
-k = 8
-alpha <- 0.05 # 95% Sicherheit
+set.seed(123)
+alpha <- 0.05
+k <- 1:8
+n_values <- 10^k
 
-df <- data.frame(
-  k = 1:k,
-  n = 10^(1:k)
-)
-
-df$mean <- sapply(df$n, function(n) {
-  x <- runif(n, -1, 1) #  n gleichverteilte Zufallszahlen zwischen -1 und 1 erzeugen
-  y <- runif(n, -1, 1)
-  mean(4 * (x^2 + y^2 <= 1))
-})
-
-df$var <- sapply(df$n, function(n) {
+approximate_pi <- function(n) {
+  # Mit runif() wird n gleichverteilte Zufallzahlen generiert im Intervall[-1,1]
   x <- runif(n, -1, 1)
   y <- runif(n, -1, 1)
-  var(4 * (x^2 + y^2 <= 1))
-})
+  # Es wird hier geprüft ob der Punkt innerhalb des Kreises liegt
+  z <- 4 * (x^2 + y^2 <= 1)
+  # pi approximierien
+  pi_approx <- mean(z) # Mittelwert der z_i
+  error <- abs(pi - pi_approx)
+  return(c(approx = pi_approx, error = error))
+}
 
-df$error <- sqrt(df$var / (alpha * df$n)) # Fehlerabschätzung basierend auf Tschebyscheff-Ungleichung
+results <- t(sapply(n_values, approximate_pi))
+df <- data.frame(
+  k = k,
+  n = n_values,
+  pi_approx = results[,1],
+  error = results[,2]
+)
+print(df)
+
+# Tschebyscheff-Fehlergrenze
+var_z <- 4 * pi - pi^2
+#df$tschebyscheff_error <- sqrt(var_z / (alpha * df$n))
 
 # Plot
-plot(df$k, df$mean, type = "b", lwd = 2, pch = 19, col = "blue",
+plot(df$k, df$pi_approx, type = "b", pch = 19, lwd = 2, col = "blue",
      xlab = expression(n == 10^k),
      ylab = expression(hat(pi)),
-     main = expression("Monte Carlo Approximation von"~pi))
+     main = "Monte Carlo Approximation von Kreiszahl")
 abline(h = pi, col = "red", lwd = 2)
-df
+legend("bottomright",
+       legend = c("Monte-Carlo-Schätzung", "Kresizahl (exakt)"),
+       col = c("blue", "red"),
+       lty = c(1, 1),
+       lwd = 2,
+       pch = c(19, NA))
+
 ```
-- Interpretation: Die Genauigkeit der Monte Carlo-Approximation von \(\pi\) steigt mit wachsender Stichprobengröße \(n\), während die Varianz der Schätzungen entsprechend sinkt (Gesetz der großen Zahlen).
+- Interpretation: Die Genauigkeit der Monte Carlo-Approximation von Kreiswert steigt mit wachsender Stichprobengröße n, während die Varianz der Schätzungen entsprechend sinkt.
+- Ab k=5 (also n=100000 > 53936) liegt die Schätzung sicher im Tschebyscheff-Fehlerband. Für kleinere n ist die Streuung groß, aber ab diesem Punkt garantiert die Ungleichung eine ausreichend genaue Schätzung.
 
 
 # A2. Monte Carlo Integration
 
-In dieser Übung soll der Wert $1.96$ als $0.975-Quantil$ der Standardnormalverteilung mit Hilfe
-von Monte Carlo Integration überprüft werden.
-
+Wir wollen in dieser Aufgabe das Integral ∫phi(x) von -1.96 bis 1.96
+Wobei phi(x) die Dichte der Standardnormalverteilung ist
+Schritte:
+Ziehe viele Zufallzahlen xi gleichverteilt im Intervall [-1.96,1.96]
+Berechne für jeden Punkt den Wert der Dichtefunktion phi(xi)
+Der Mittelwert dieser Werte wird mit Intervalllänge multipliziert
+1.96 -(-1.96)=2*1.96 = 3.92
+Das Ergebnis ist die Schätzung des Integrals
 ## a. n gleichverteilte Zufallszahlen
 
-Erzeuge hierzu $n$ gleichverteilte Zufallszahlen auf dem Intervall $[-1{,}96, 1{,}96]$ und bestimme
-\[
-2 \times 1{,}96 \times \phi(x),
-\]
-wobei $\phi$ die Dichte der Standardnormalverteilung ist, definiert durch
-\[
-\phi(x) = \frac{1}{\sqrt{2\pi}} \exp\left( -\frac{x^2}{2} \right).
-\]
 
-Stelle analog zur Aufgabe A1 für verschiedene Werte von $n$ die Approximation und ihre Genauigkeit in einer Tabelle dar.
-Verwende hierfür die gleichen Werte für $n$ wie in Aufgabe A1, also $n = 10^k$ für $k \in \{1, \dotsc, 8\}$.
+Stelle analog zur Aufgabe A1 für verschiedene Werte von n die Approximation und ihre Genauigkeit in einer Tabelle dar.
+Verwende hierfür die gleichen Werte für n wie in Aufgabe A1, also n = 10^k.
 
 \textbf{Hinweis:} Der gesuchte Integralwert ist $0{,}95$!
 
 
 
 ```{r , echo=T, collapse=T}
-set.seed(123)  # Seed setzen für Reproduzierbarkeit
-k = 8
-alpha <- 0.05
-Q <- 1.96 # 0.975-Quantil der Standardnormalverteilung
+# Dichtefunktion der Standardnormalverteilung
+phi <- function(x) {
+  return((1 / sqrt(2 * pi)) * exp(-0.5 * x^2))
+}
 
-df <- data.frame(
-  k = 1:k,
-  n = 10^(1:k)
-)
+approx_integral <- function(n) {
+  x <- runif(n, -1.96, 1.96)
+  mean_phi <- mean(phi(x))
+  integral_approx <- 2 * 1.96 * mean_phi
+  error <- abs(0.95 - integral_approx)
+  return(c(approx = integral_approx, error = error))
+}
+# Werte für n
+ns <- 10^(1:8)
+results_a2a <- sapply(ns, approx_integral)
+results_a2a <- t(results_a2a)
+colnames(results_a2a) <- c("Integral", "Fehler")
+results_a2a <- cbind(n = ns, results_a2a)
 
-df$mean <- sapply(df$n, function(n) {
-  x <- runif(n, -Q, Q) # n gleichverteilte Zufallsvariablen zwischen -Q und Q
-  mean(2 * Q * dnorm(x))
-})
-
-df$var <- sapply(df$n, function(n) {
-  x <- runif(n, -Q, Q)
-  var(2 * Q * dnorm(x))
-})
-
-df$error <- sqrt(df$var / (alpha * df$n)) # Fehlerabschätzung basierend auf Tschebyscheff-Ungleichung
+print(as.data.frame(results_a2a))
 
 # Plot
-plot(df$k, df$mean, type = "b", lwd = 2, pch = 19, col = "blue",
+plot(1:8, results_a2a[, "Integral"], type = "b", lwd = 2, pch = 19, col = "blue",
      xlab = expression(n == 10^k),
      ylab = "Schätzwert",
-     main = "Monte Carlo Integration zur Überprüfung von 0.975 Quantil")
+     main = "Monte Carlo Integration zur Überprüfung des 95%-Quantils")
 abline(h = 0.95, col = "red", lwd = 2)
-df
 ```
-- Interpretation: Mit zunehmender Stichprobengröße nn wird die Monte Carlo Schätzung des $0.975-Quantils$ der Standardnormalverteilung zunehmend genauer und stabilisiert sich sehr nah am theoretischen Wert von 0.95 (Gesetz der großen Zahlen).
+- Interpretation: Mit zunehmender Stichprobengröße n wird die Monte Carlo Schätzung des $0{,}975$ Quantils der Standardnormalverteilung zunehmend genauer und stabilisiert sich sehr nah am theoretischen Wert von 0.95.
 
 ## b. Die Verteilung der Schätzer
-Führe für die Werte  $n = 10^5$, $n = 10^6$ und $n = 10^7$ jeweils $200$ Approximationen durch und stelle die Verteilung der Schätzer für $p = 0.95$ in einer gemeinsamen Abbildung dar. Interpretiere das Ergebnis.
+
+Wir machen diesen Vorgang für 10^5, 10^6, 10^7 nicht nur einmal sondern 200 mal
+Es wird immer eine leicht andere Schätzung, weil wir jedes Mal neue Zufallzahlen generieren
+Dann wird die Verteilung dieser 200 Schätzwerte geplottet
+Je größer n, desto weniger schwanken die Schätzwerte (kleinere Streuung bzw. Varianz)
 
 ```{r , echo=T, collapse=T }
 set.seed(123)  # Seed setzen für Reproduzierbarkeit
@@ -169,55 +138,47 @@ abline(h = 0.95, col = "black", lwd = 2)
 legend('topright', legend = paste("n =", format(n_values, scientific = FALSE)),
        col = farben, pch = 19)
 ```
-- Interpretation: Mit zunehmender Stichprobengröße \(n\) verringert sich die Varianz der Schätzungen signifikant.  
-Bei \(n = 10^7\) (grün) ist die Approximation extrem präzise und praktisch perfekt auf \(0{,}95\) zentriert.  
-Die grafische Darstellung bestätigt eindrucksvoll die Konvergenzeigenschaften der Monte Carlo Integration und das Gesetz der großen Zahlen.
+- Interpretation: Mit zunehmender Stichprobengröße n verringert sich die Varianz der Schätzungen signifikant.  
+Bei $n=10^7$ (grün) ist die Approximation extrem präzise und praktisch perfekt auf $0{,}95$ zentriert.  
+Die grafische Darstellung bestätigt eindrucksvoll die Konvergenzeigenschaften der Monte Carlo Integration.
 
 # A3. Berechnen einer Fläche 
 In dieser Übung soll eine Fläche mithilfe von Monte-Carlo-Integration berechnet werden.  
-Als umgebendes Rechteck wählen wir \([-7, 7] \times [-4, 4]\), die Fläche \(A\) ist durch folgende Ungleichung definiert:
-
-\[
-\frac{x^2}{49} + \frac{y^2}{9} - 1 \leq 0
-\]
-
-Erzeuge \(n = 10^5\) Tupel \((x_i, y_i)\) für \(i = 1, \dotsc, n\) mit \(x_i \sim \mathcal{U}([-7, 7])\) und \(y_i \sim \mathcal{U}([-4, 4])\) und bilde hieraus die Bernoulli-Variable \(z_i = \mathbf{1}_A(x_i, y_i)\).
+Als umgebendes Rechteck wählen wir [-7, 7]x[-4, 4], die Fläche A ist durch folgende Ungleichung definiert:
 
 ## a. Graphische Darstellung der Fläche A
 
 Stelle die Fläche A anhand der Punkte, die in A liegen, graphisch dar. Wenn die Ungleichungen richtig umgesetzt wurde, sollte Dir die Fläche bekannt vorkommen.
 
-```{r }
+```{r , warning=FALSE}
 set.seed(123)  # Seed setzen für Reproduzierbarkeit
 
-n <- 10^5
-x <- runif(n, min = -7, max = 7)
-y <- runif(n, min = -4, max = 4)
+# Funktion, um zu testen, ob Punkt in A liegt
+in_A <- function(x, y) {
+  cond1 <- x^2 / 49 + y^2 / 9 - 1 <= 0
+  cond2 <- ((abs(x) >= 4 & y >= -3 * sqrt(33) / 7 & y <= 0) |
+            (abs(x) >= 3 & y >= 0))
+  cond3 <- (y >= -3 & y <= 0 & x >= -4 & x <= 4 &
+           (-((3 * sqrt(33) - 7) * x^2) / 112 + abs(x) / 2 + sqrt(1 - (abs(abs(x) - 2) - 1)^2) - y - 3 <= 0))
+  cond4 <- (y >= 0 & abs(x) >= 3/4 & abs(x) <= 1 & (-8 * abs(x) - y + 9 <= 0))
+  cond5 <- (abs(x) >= 1/2 & abs(x) <= 3/4 & (3 * abs(x) - y + 3/4 <= 0) & y >= 0)
+  cond6 <- (abs(x) <= 1/2 & y >= 0 & (9/4 - y >= 0))
+  cond7 <- (abs(x) >= 1 & abs(x) <= 3 & y >= 0 &
+           (-abs(x)^2 + (3 * sqrt(10)/7) * sqrt(4 - (abs(x) - 1)^2) - y + (6 * sqrt(10)/7) + 3/2 >= 0))
+  return(cond1 & (cond2 | cond3 | cond4 | cond5 | cond6 | cond7))
+}
 
-# Berechne die Funktion f(x, y) für jedes Tupel
-f <- x^2 / 49 + y^2 / 9 - 1
+# Monte-Carlo-Berechnung der Fläche
+n <- 1e5
+x_vals <- runif(n, -7, 7)
+y_vals <- runif(n, -4, 4)
+points_in_A <- in_A(x_vals, y_vals)
+area_rectangle <- 14 * 8
+estimated_area <- area_rectangle * mean(points_in_A)
 
-# Bestimme die Punkte, die in A liegen
-indices_A <- which(f <= 0)
-x_A <- x[indices_A]
-y_A <- y[indices_A]
+cat("Geschätzter Flächeninhalt von A:", estimated_area, "\n")
 
 # Plot der Punkte in A
-plot(x_A, y_A, pch = 20, col = "blue",
-     main = "Darstellung der Fläche A", 
-     xlab = "x",
-     ylab = "y")
-```
-
-
-## b. Naherungsweise der Flächeninhalt
-
-Berechne näherungsweise den Flächeninhalt von A mit Hilfe der Formel aus dem Video.
-\[
-\text{Fläche der Ellipse} \approx (7 \times 4) \times \frac{\text{Anzahl der Punkte in } A}{n}
-\]
-
-```{r }
-A <- (7*4) * (length(indices_A)/n)
-print(paste("Der Flächeninhalt A beträgt näherungsweise:", A))
+plot(x_vals[points_in_A], y_vals[points_in_A], pch = ".", col = "blue", asp = 1,
+     main = "Punkte in A", xlab = "x", ylab = "y")
 ```

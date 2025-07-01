@@ -7,14 +7,13 @@ In dieser Aufgabe soll die Aussage des Zentralen Grenzwertsatzes für Bootstrap-
 Simuliere 50 bzw. 1000 Datensätze mit jeweils 500 gleichverteilten Daten auf [0, 1], speichere die Mittelwerte im Vektor $Means_{sim}$
 
 ```{r , echo=T, collapse=T}
-set.seed(123)
+set.seed(123) # für Reproduzierbarkeit
 
-N <- 500
-datasets_50 <- replicate(50, runif(N, 0, 1))
-datasets_1000 <- replicate(1000, runif(N, 0, 1))
+# Simulation mit 50 Wiederholungen
+Meanssim_50 <- replicate(50, mean(runif(500)))
 
-MeaNs_sim_50 <- apply(datasets_50, 2, mean)
-Means_sim_1000 <- apply(datasets_1000, 2, mean)
+# Simulation mit 1000 Wiederholungen
+Meanssim_1000 <- replicate(1000, mean(runif(500)))
 ```
 
 ## b. Bootstrap
@@ -23,20 +22,11 @@ Simuliere einen weiteren Datensatz mit 500 gleichverteilten Daten auf [0, 1] und
 ```{r , echo=T, collapse=T, warnings=F}
 library(boot)
 
-data <- runif(n, 0, 1) # 500 gleichverteilten Daten
-bootstrap_mean <- function(data, indices) {
-  return(mean(data[indices]))
-}
+daten <- runif(500)
 
-# Bootstrap-Replikationen
-N_boot_50 <- 50
-N_boot_1000 <- 1000
+Meansboot_50 <- replicate(50, mean(sample(daten, replace = TRUE)))
 
-boot_results_50 <- boot(data = data, statistic = bootstrap_mean, R = N_boot_50)
-Means_boot_50 <- boot_results_50$t
-
-boot_results_1000 <- boot(data = data, statistic = bootstrap_mean, R = N_boot_1000)
-Means_boot_1000 <- boot_results_1000$t
+Meansboot_1000 <- replicate(1000, mean(sample(daten, replace = TRUE)))
 ```
 
 ## c. Verteilung der Simulation
@@ -44,33 +34,60 @@ Vergleiche die Histogramme und Boxplots von $Means_{sim}$ und $Means_{boot}$, te
 
 
 ```{r , echo=T, collapse=T}
-par(mfrow = c(2, 2))
-hist(Means_sim_50, main = "Means_sim 50")
-hist(Means_boot_50, main = "Means_boot 50")
-boxplot(Means_sim_50, main = "Means_sim 50")
-boxplot(Means_boot_50, main = "Means_boot 50")
+# Histogramme
+par(mfrow = c(2, 2))  # 2x2 Plotfenster
 
-par(mfrow = c(2, 2))
-hist(Means_sim_1000, main = "Means_sim 1000")
-hist(Means_boot_1000, main = "Means_boot 1000")
-boxplot(Means_sim_1000, main = "Means_sim 1000")
-boxplot(Means_boot_1000, main = "Means_boot 1000")
+# Histogramme
+hist(Meanssim_50, main = "Simuliert (n=50)", xlab = "Mittelwert", col = "skyblue")
+hist(Meansboot_50, main = "Bootstrap (n=50)", xlab = "Mittelwert", col = "salmon")
+hist(Meanssim_1000, main = "Simuliert (n=1000)", xlab = "Mittelwert", col = "skyblue")
+hist(Meansboot_1000, main = "Bootstrap (n=1000)", xlab = "Mittelwert", col = "salmon")
 
-# Shapiro-Wilk Test
-shapiro.test(Means_sim_50)
-shapiro.test(Means_boot_50)
-shapiro.test(Means_sim_1000)
-shapiro.test(Means_boot_1000)
+par(mfrow = c(1, 2))  # Boxplots nebeneinander
+
+# Boxplots
+boxplot(Meanssim_50, Meansboot_50, names = c("Simuliert 50", "Bootstrap 50"), col = c("skyblue", "salmon"), main = "Boxplot (n=50)")
+boxplot(Meanssim_1000, Meansboot_1000, names = c("Simuliert 1000", "Bootstrap 1000"), col = c("skyblue", "salmon"), main = "Boxplot (n=1000)")
+
+
+# --- Shapiro-Wilk Normalverteilungstests ---
+cat("\n--- Shapiro-Wilk-Tests auf Normalverteilung ---\n")
+cat("Simuliert 50:\n"); print(shapiro.test(Meanssim_50))
+cat("Bootstrap 50:\n"); print(shapiro.test(Meansboot_50))
+cat("Simuliert 1000:\n"); print(shapiro.test(Meanssim_1000))
+cat("Bootstrap 1000:\n"); print(shapiro.test(Meansboot_1000))
 ```
-Die Ergebnisse der Shapiro-Wilk Tests zeigen, dass sowohl die simulierten Mittelwerte als auch die Bootstrap-Mittelwerte keine signifikante Abweichung von der Normalverteilung aufweisen. Durch die zunehmende Anzahl der Replikationen werden die Verteilungen von beiden Simualtionmethoden die Normalverteilung approximieren.
+Interpretaion:
+
+Histogramme:
+Alle vier Histogramme zeigen eine annährend glockenförmige Verteilung(Normalverteilung)
+Direkt Folge des ZGS
+Die Histogramme mit 1000 Wiederholungen sind deutlich glatter und symmetrischer
+=> Eine hohe Anzahl an Wiederholungen liefert ein bessere Normalverteilung
+
+
+Boxplots:
+Bei den Simulierten Daten liegt der Median sehr nahe am theoretischen Wert von 0.5
+Bei den Bootstrap-Daten liegt der Median etwas höher, was bestätigt, dass Bootstrap
+
+
+Shripo-Wilk-test:
+Der Sharipo-Wilk-Test überprüft, ob die Daten aus einer Normalverteilung stammen
+w: Teststatistik (je näher an 1, desto normaler)
+p-wert: p>0.05 => Daten sind normal genug
 
 
 ## d. Vergleich von Means mit t-Test
 Vergleiche die Mittelwerte von $Means_{sim}$ und $Means_{boot}$ mit einem t-Test.
 
 ```{r , echo=T, collapse=T}
-t.test(Means_sim_50,  Means_boot_50)
-t.test(Means_sim_1000,  Means_boot_1000)
+# --- d) t-Tests zum Vergleich der Mittelwerte ---
+cat("\n--- t-Tests: Vergleich der Mittelwerte ---\n")
+cat("t-Test: Simuliert 50 vs Bootstrap 50\n")
+print(t.test(Meanssim_50, Meansboot_50))
+
+cat("\nt-Test: Simuliert 1000 vs Bootstrap 1000\n")
+print(t.test(Meanssim_1000, Meansboot_1000))
 ```
 
 ## e. Interpretieren
@@ -82,3 +99,129 @@ dass wir die Nullhypothese nicht verwerfen können, es gibt keinen Unterschied z
 - Für t-Test Means_sim_1000 und Means_boot_1000: Der p-Wert ist auch viel kleiner als 0.05, es gibt keinen signifikanten Unterschied zwischen den beiden Daten.
 
 - Größere Stichproben neigen dazu, Unterschiede besser zu erkennen und präzisere Schätzungen zu liefern.
+
+# A2. Kondenzintervalle mit Bootstrap
+
+In dieser Aufgabe sollen die Kondenzintervalle einer linearen Regression mit den aus dem
+Bootstrap-Verfahren gewonnenen Kondenzintervallen verglichen werden.
+
+
+## a. Vergleich der Verteilungen der Parameter-Schätzer
+Führe für die Parameter der multiplen linearen Regression aus Übung 2 (Trump-Daten) jeweils
+ein Bootstrap-Verfahren mit 50, 100, 1000 und 10000 Replikationen durch. Vergleiche die Verteilungen
+der Parameter-Schätzer und interpretiere die Befunde (Histogramm, QQ-Plot, t-Test).
+
+```{r}
+load("../data/Donald.RData")
+trump_data<- Donald_1
+model<-lm(Trump~.,data=trump_data)
+```
+
+
+
+```{r}
+coef_return_func <- function(data, indices) {
+  d <- data[indices, ]  # Bootstrap sample (Ziehen mit Zurücklegen)
+  coef(lm(Trump~., data = d))  # Schätze die Regressionskoeffizienten
+}
+
+# Führt 1000 Bootstrap-Wiederholungen aus
+# Jedes Mal werden neue Stichproben mit Zurücklegen gezogen
+# Für jede wird das lineare Modell geschätzt
+
+
+library(boot)
+set.seed(123)
+boot_50 <- boot(trump_data, coef_return_func, R = 50)
+boot_100 <- boot(trump_data, coef_return_func, R = 100)
+boot_1000 <- boot(trump_data, coef_return_func, R = 1000)
+boot_10000 <- boot(trump_data, coef_return_func, R = 10000)
+```
+
+
+```{r}
+boot_coefs_50 <- as.data.frame(boot_50$t)
+boot_coefs_100 <- as.data.frame(boot_100$t)
+boot_coefs_1000 <- as.data.frame(boot_1000$t)
+boot_coefs_10000 <- as.data.frame(boot_10000$t)
+colnames(boot_coefs_50) <- names(coef(model))
+colnames(boot_coefs_100) <- names(coef(model))
+colnames(boot_coefs_1000) <- names(coef(model))
+colnames(boot_coefs_10000) <- names(coef(model))
+
+```
+
+
+
+
+```{r}
+# Vergleich der Verteilungen mit Histogrammen und QQ-Plots
+par(mfrow = c(2, 2)) # Layout für 4 Plots
+for (param in names(coef(model))) {
+hist(boot_coefs_50[[param]], main = paste("Histogram von", param, "mit 50 Reps"), xlab = param)
+hist(boot_coefs_10000[[param]], main = paste("Histogram von", param, "mit 10000 Reps"), xlab = param)
+qqnorm(boot_coefs_50[[param]], main = paste("QQ-Plot von", param, "mit 50 Reps"))
+qqline(boot_coefs_50[[param]])
+qqnorm(boot_coefs_10000[[param]], main = paste("QQ-Plot von", param, "mit 10000 Reps"))
+qqline(boot_coefs_10000[[param]])
+}
+```
+
+
+
+```{r}
+# Durchführung von t-Tests für jeden Parameter
+print("t-Test")
+## [1] "t-Test"
+for (param in names(coef(model))) {
+t_test_result <- t.test(boot_coefs_50[[param]], boot_coefs_10000[[param]])
+cat("p-Wert von", param, "zwischen 50 und 10000 :", t_test_result$p.value, "\n")
+cat("Schätz-Wert von", param, "zwischen 50 und 10000 :", t_test_result$estimate, "\n")
+print("")
+}
+```
+
+
+
+## b. Bestimmen der Kondenzintervalle
+Bestimme die Kondenzintervalle mit Hilfe des Bootstrap Verfahrens mit 50, 100, 1000, und 10000 Replikationen, setze als Option basic ein.
+
+```{r}
+boot.ci(boot.out = boot_50,type = "basic")
+boot.ci(boot.out = boot_100,type = "basic")
+boot.ci(boot.out = boot_1000,type = "basic")
+boot.ci(boot.out = boot_10000,type = "basic")
+```
+
+Wir nehmen hier für jede Stichprobe das 2,5 %- und 97,5 %-Quantil dieser Werte
+ das ist mein 95 %-Konfidenzintervall.
+
+
+Was kann ich unter Konfidenzintervall verstehen?
+Wenn man viele Stichproben zieht und jedes Mal ein Konfidenzintervall berechnet, dann werden 95 % dieser Intervalle den wahren Mittelwert der Grundgesamtheit enthalten.
+
+
+
+
+## c. Vergleich der Bootstrap-Konfenzintervalle
+Vergleiche die Bootstrap-Kondenzintervalle mit den Kondenzintervallen aus der linearen Regression. Welche Anzahl von Replikationen ist empfehlenswert und warum?
+
+```{r}
+model <- lm(Trump~., trump_data)
+regression_intervals <- confint(model)
+print(regression_intervals)
+```
+
+Interpretation:
+Mit steigende Anzahl der Replikation wird unser Konfidenzintervall genauer 
+Ich werde R=1000 auswählen, da diese KI sehr nah am KI der linearen Regression liegt
+und auch können Rechnenaufwand mit dieser Auswahl gespart werden.
+
+
+## d. Vergleich der Konfenzintervalle
+Vergleiche die Kondenzintervalle bei 1000 Replikationen mit der Option basic mit den Ergebnissen
+wenn die Optionen perc bzw. bca verwendet werden.
+
+```{r}
+boot.ci(boot.out = boot_1000,type = c("basic", "perc", "bca"))
+```

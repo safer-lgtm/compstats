@@ -42,23 +42,14 @@ In dieser Aufgabe soll die Ridge-Regression auf den Datensatz angewendet werden.
 ```{r}
 #install.packages("caret")
 library(caret)
+load("../data/prostate.RData")
+data<-prostate
+#str(prostate)
 
-load("../data/prostate.rdata")
-head(prostate)
+lm_model<- lm(lpsa~lcavol+lweight+age+lbph+svi+lcp+gleason+pgg45,data =data )
+lm_coef<-coef(lm_model)
+print(lm_coef)
 
-UV <- c("lcavol", "lweight", "age", "lbph", "svi", "lcp", "gleason", "pgg45")
-AV <- "lpsa"
-
-# Pre-processing transformation (centering, scaling etc.)
-preProcValues <- preProcess(prostate[, c(UV, AV)], method = c("center", "scale"))
-scaled_data <- predict(preProcValues, prostate[, c(UV, AV)])
-scaled_data$train <- prostate$train # 'train' Spalte
-
-# Lineares Modell mit skalierten Daten
-model <- lm(lpsa ~ lcavol + lweight + age + lbph + svi + lcp + gleason + pgg45, data = scaled_data)
-coeffs_scaled  <- coef(model)
-print("Koeffizienten des linearen Modells (skalierte Daten):")
-print(coeffs_scaled)
 ```
 
 
@@ -71,15 +62,19 @@ $\alpha = 0$ durchgefuhrt. Diese Funktion benötigt als Input die Modell Matrix 
 
 ```{r}
 library("glmnet")
-X <- as.matrix(scaled_data[, UV]) # Matrix
-y <- scaled_data[, AV] # Verktor
-ridge_model_0 <- glmnet(x = X, y = y, alpha = 0, lambda = 0)
-ridge_model_10 <- glmnet(x = X, y = y, alpha = 0, lambda = 10)
+x <- model.matrix(lpsa ~ . - train, data = prostate)[,-1]
+y <-data$lpsa
 
-coeffs_0 <- coef(ridge_model_0)
-coeffs_10 <- coef(ridge_model_10)
-print(coeffs_0)
-print(coeffs_10)
+# Ridge Regression
+ridge_0 <- glmnet(x, y, alpha = 0, lambda = 0) # Lambda=0
+ridge_10 <- glmnet(x, y, alpha = 0, lambda = 10) # Lambda=10
+
+# Koeffizienten extrahieren
+coef_0 <- coef(ridge_0)
+coef_10 <- coef(ridge_10)
+
+print(coef_0)
+print(coef_10)
 ```
 
 - Bei $\lambda=0$ stimmen die Ridge-Koeffizienten fast exakt mit den Schätzern aus a) überein. Das ist zu erwarten.
@@ -91,9 +86,11 @@ Erzeuge einen Plot der Koeffizienten für verschiedene $\lambda$-Werte.
 
 ```{r}
 lambda_values <- 10^seq(3, -2, by = -.1)
+ridge_fit <- glmnet(x, y, alpha = 0, lambda = lambda_values)
+plot(ridge_fit, xvar = "lambda", label = TRUE, main = "Ridge: Coefficients vs. Lambda", lw = 2)
 
-ridge_model <- glmnet(x = X, y = y, alpha = 0, lambda = lambda_values)
-plot(ridge_model, xvar = "lambda", label=T, main = "Coefficients vs. Lambda", lw = 2)
+legend("topright", legend = rownames(ridge_fit$beta), 
+       col = 1:nrow(ridge_fit$beta), lwd = 2, cex = 0.6)
 ```
 
 - Alle Koeffizienten werden gleichzeitig geschrumpft. Für steigende $\lambda$ konvergieren alle UV gleichzeitig gegen Null.
@@ -106,79 +103,80 @@ mse_calculate <- function(y_true, y_pred) {
 }
 # Funktion zur Durchführung von k-facher Cross-Validation für Ridge-Regression
 k_fold_cv <- function(X, y, lambda_values, k = 5) {
-  n <- nrow(X)                      
-  fold_size <- floor(n / k)        # Größe jedes Folds
-  mse_values <- numeric(length(lambda_values)) # Vektor zur Speicherung der MSEs für jedes Lambda
-  
+  n <- nrow(X)
+  mse_values <- numeric(length(lambda_values))  # Zum Speichern der Fehler pro Lambda
+
+  # Zufällige Fold-Zuordnung (ausbalanciert)
+  set.seed(42)  # Für Reproduzierbarkeit
+  folds <- sample(rep(1:k, length.out = n))
+
   # Schleife über alle Lambda-Werte
-  for (lambda_idx in 1:length(lambda_values)) {
-    lambda <- lambda_values[lambda_idx]    # Aktueller Lambda-Wert
-    mse_folds <- numeric(k)                # MSEs für jedes Fold
-    
-    # Schleife über die k Folds
+  for (lambda_idx in seq_along(lambda_values)) {
+    lambda <- lambda_values[lambda_idx]
+    errors <- numeric(k)
+
     for (i in 1:k) {
-      # Indizes für Test- und Trainingsdaten bestimmen
-      test_indices <- ((i-1) * fold_size + 1):(i * fold_size)  # Test-Daten-Indizes
-      if (i == k) {  # Letzter Fold kann größer sein, um alle Daten abzudecken
-        test_indices <- ((i-1) * fold_size + 1):n
-      }
-      train_indices <- setdiff(1:n, test_indices)  # Trainings-Daten-Indizes
-      
-      # Trainings- und Testdaten erstellen
+      test_indices <- which(folds == i)
+      train_indices <- setdiff(1:n, test_indices)
+
       X_train <- X[train_indices, ]
       y_train <- y[train_indices]
       X_test <- X[test_indices, ]
       y_test <- y[test_indices]
-      
-      # Ridge-Modell trainieren mit alpha=0 (reine Ridge-Regression) und aktuellem Lambda
-      model <- glmnet(X_train, y_train, alpha = 0, lambda = lambda)
-      
-      # Vorhersagen für die Testdaten
+
+      # Ridge-Regression (alpha = 0)
+      model <- glmnet(X_train, y_train, alpha = 0, lambda = lambda, standardize = TRUE)
+
       y_pred <- predict(model, s = lambda, newx = X_test)
-      
-      # MSE für diesen Fold berechnen
-      mse_folds[i] <- mse_calculate(y_test, y_pred)
+
+      # Fehler berechnen (z.B. MSE)
+      errors[i] <- mse_calculate(y_test, y_pred)
     }
-    
-    # Durchschnittliche MSE über alle Folds speichern
-    mse_values[lambda_idx] <- mean(mse_folds)
+
+    mse_values[lambda_idx] <- mean(errors)
   }
-  
-  return(mse_values)  # Rückgabe der MSEs für alle getesteten Lambda-Werte
+
+  return(mse_values)
 }
+
 # Beispielhafte Anwendung
 lambda_values <- c(0.0, 0.09, 2)
-mse_values <- k_fold_cv(X,y, lambda_values, k = 5)
+mse_values <- k_fold_cv(x,y, lambda_values, k = 5)
+print(lambda_values)
 cbind(mse_values)
 ```
 
-- Cross Validation mit ($k = 5$) zeigt, dass für $\lambda = 0$ (lineare Regression) hat das Model die beste Leistung ($MSE = 0.7121494$).
+- Cross Validation mit k = 5 zeigt, dass für lambda=0.09 hat das Model die beste Leistung MSE ist am kleinsten.
 
 
 ## e. Optimaler Schätzer für Lambda
 
 Ermittle mithilfe der Funktion cv.glmnet den optimalen Schätzer für $\lambda$. Erzeuge einen Plot
 für den Test-MSE-Schätzer abhängig von $\lambda$. Vergleiche das Ergebnis mit d).
-```{r}
+```{r, warning=FALSE}
 # Cross-validated Ridge Regression mit cv.glmnet durchführen
-set.seed(1)
+set.seed(123)
 lambda_values <- seq(0, 0.25, by = 0.01)
-cvfit <- cv.glmnet(x = X, y = y, alpha = 0, lambda = lambda_values, type.measure = c("mse"))
+cvfit <- cv.glmnet(x = x, y = y, alpha = 0, lambda = lambda_values, type.measure = c("mse"))
 optimal_lambda_ridge <- cvfit$lambda.min
+# Index des optimalen Lambda-Werts finden
+idx <- which(cvfit$lambda == optimal_lambda_ridge)
+# MSE (mittlerer Cross-Validation-Fehler) an dieser Stelle
+mse_best <- cvfit$cvm[idx]
+# Ausgeben
+print(cbind(optimal_lambda_ridge, mse_best))
 
 # Plot der Test-MSE-Schätzer abhängig von Lambda
 plot(cvfit$lambda, cvfit$cvm, type = "l", log = "x", xlab = "Lambda", ylab = "MSE", main = "MSE vs. Lambda")
 abline(v = optimal_lambda_ridge, col = "red", lty = 2)
 ```
 
-Der Unterschied in den MSE-Werten (0.71 vs. 0.43) entsteht, weil `cv.glmnet` eine optimierte, integrierte Kreuzvalidierung verwendet, die die beste $\lambda$ und robustere Fold-Splits wählt. Im Vergleich ist die manuelle `k_fold_cv`-Funktion weniger genau, da sie einfachere Fold-Aufteilungen und keine interne Standardisierung nutzt.
-
 # A2. Lasso Regression
 
 ## a. Lasso-Verfahren ggf. die Koeffizientenschätzer
 ```{r}
-lasso_model_0 <- glmnet(x = X, y = y, alpha = 1, lambda = 0)
-lasso_model_10 <- glmnet(x = X, y = y, alpha = 1, lambda = 10)
+lasso_model_0 <- glmnet(x = x, y = y, alpha = 1, lambda = 0)
+lasso_model_10 <- glmnet(x = x, y = y, alpha = 1, lambda = 10)
 
 coeffs_0 <- coef(lasso_model_0)
 coeffs_10 <- coef(lasso_model_10)
@@ -186,15 +184,18 @@ print(coeffs_0)
 print(coeffs_10)
 ```
 
-- Lasso mit großem $\lambda = 10$ eliminiert unwichtige Variablen (Feature-Selektion).
-- Ridge ($\alpha=0$) hingegen schrumpft alle Koeffizienten, aber setzt keine auf exakt null.
+- Lasso mit großem lambda = 10 eliminiert unwichtige Variablen (Feature-Selektion).
+- Ridge alpha=0 hingegen schrumpft alle Koeffizienten, aber setzt keine auf exakt null.
 
 ## b. Koeffizienten vs Lambda
 ```{r}
 lambda_values <- 10^seq(3, -2, by = -.1)
 
-lasso_model <- glmnet(x= X, y= y, alpha = 1, lambda = lambda_values)
-plot(lasso_model,xvar = "lambda", label=T, main = "Coefficients vs. Lambda", lw = 2)
+lasso_model <- glmnet(x= x, y= y, alpha = 1, lambda = lambda_values)
+plot(lasso_model,xvar = "lambda", label=T, main = "Lasso: Coefficients vs. Lambda", lw = 2)
+
+legend("topright", legend = rownames(ridge_fit$beta), 
+       col = 1:nrow(ridge_fit$beta), lwd = 2, cex = 0.6)
 ```
 
 - Viele Koeffiziente wurden schnell direkt gegen Null geschrumpft im Vergleich zum Ridge-Regression.
@@ -203,40 +204,27 @@ plot(lasso_model,xvar = "lambda", label=T, main = "Coefficients vs. Lambda", lw 
 ```{r}
 # Beispielhafte Anwendung
 lambda_values <- c(0, 0.002, 1)
-mse_values <- k_fold_cv(X,y, lambda_values, k = 5)
+mse_values <- k_fold_cv(x,y, lambda_values, k = 5)
 cbind(mse_values)
 ```
-- Linear-Regression haben in diesem Fall von Cross Validation per Hand die kleinste Summe der quadratische Residuen ($MSE=0.7121494 $)
+
+- Lambda=0.002 die kleinste Summe der quadratische Residuen (MSE=0.573)
 
 ## d. Optmiales Lambda
-```{r}
-set.seed(1)  
+```{r, warning=FALSE}
+set.seed(123)  
 
 lambda_values <- seq(0, 0.1, by = 0.001)
-cvfit <- cv.glmnet(x = X, y = y, alpha = 1, lambda = lambda_values, type.measure = c("mse"))
+cvfit <- cv.glmnet(x = x, y = y, alpha = 1, lambda = lambda_values, type.measure = c("mse"))
 optimal_lambda_lasso <- cvfit$lambda.min
+
+# Index des optimalen Lambda-Werts finden
+idx <- which(cvfit$lambda == optimal_lambda_lasso)
+# MSE (mittlerer Cross-Validation-Fehler) an dieser Stelle
+mse_best <- cvfit$cvm[idx]
+# Ausgeben
+print(cbind(optimal_lambda_lasso, mse_best))
 # Plot der Test-MSE-Schätzer abhängig von λ
 plot(cvfit$lambda, cvfit$cvm, type = "l", log = "x", xlab = "Lambda", ylab = "MSE", main = "MSE vs. Lambda")
 abline(v = optimal_lambda_lasso, col = "red", lty = 2)
 ```
-
-## e. Ridge vs Lasso
-```{r Vergleich}
-# Koeffizienten des Ridge-Modells anzeigen
-ridge_model_opt <- glmnet(x = X, y = y, alpha = 0, lambda = optimal_lambda_ridge)
-print("Ridge Regression Koeffizienten")
-print(coef(ridge_model_opt))
-
-# Koeffizienten des Ridge-Modells anzeigen
-lasso_model_opt <- glmnet(x = X, y = y, alpha = 1, lambda = optimal_lambda_lasso)
-print("Lasso Regression Koeffizienten")
-print(coef(lasso_model_opt))
-```
-
-
-Interpretieren:
-
-  - Die Koeffizienten von *age, lcp und gleason* bei **Lasso Regression** wurden auf *Null* gesetzt. Das bedeutet, dass diese Variable keinen Beitrag zur Vorhersage des Modells leistet, zumindest nicht signifikant genug im Vergleich zu den anderen Prädiktoren, die im Modell verbleiben. Lasso bietet die Variablenselektion, da irrelevante oder schwach beitragende Variablen aus dem Modell entfernt werden können, was zu einem spärlichen Modell führt. 
-  
-  - Ridge-Regression tendiert dazu, alle Variablen beizubehalten und ihre Koeffizienten proportional zu ihrer Bedeutung für die Modellvorhersage zu schrumpfen. Je größer $\lambda$, desto stärker werden die Koeffizienten reduziert, aber sie bleiben immer noch größer als Null.
-

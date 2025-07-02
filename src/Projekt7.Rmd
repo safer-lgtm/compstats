@@ -47,8 +47,9 @@ Variablen mit starke Korrelation:
 Führe eine PCA-Regression mit den UV lcavol, lweight, age, lbph, svi, lcp, gleason und pgg45
 und der AV lpsa durch (`pcr` aus dem Paket `pls`). Wähle die Optionen so, dass die Variablen vor
 der PCA-Regression **standardisiert** werden, sowie der Fehler einer 10-fachen Cross-Validation für jede Anzahl von Hauptkomponenten verwendet wird.
+- RMSEP = Root Mean Squared error of Prediction 
 
-```{r install, echo = FALSE, include=FALSE}
+```{r}
 library(pls)
 library(dplyr)
 library(glmnet)
@@ -61,7 +62,6 @@ pca.fit  <- pcr(lpsa ~ lcavol + lweight + age + lcp + lbph + svi + gleason + pgg
                 segments = 10) # 10-fache CV
 summary(pca.fit)
 ```
-- RMSEP = Root Mean Squared error of Prediction 
 
 ## c. Vergleich der Fehler der Cross-Validations
 

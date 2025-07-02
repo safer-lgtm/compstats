@@ -102,12 +102,12 @@ mse_calculate <- function(y_true, y_pred) {
   mean((y_true - y_pred)^2) # Durchschnitt
 }
 # Funktion zur Durchführung von k-facher Cross-Validation für Ridge-Regression
-k_fold_cv <- function(X, y, lambda_values, k = 5) {
+k_fold_cv <- function(X, y, lambda_values, k = 5, alpha=0) {
   n <- nrow(X)
   mse_values <- numeric(length(lambda_values))  # Zum Speichern der Fehler pro Lambda
 
   # Zufällige Fold-Zuordnung (ausbalanciert)
-  set.seed(42)  # Für Reproduzierbarkeit
+  set.seed(123)  # Für Reproduzierbarkeit
   folds <- sample(rep(1:k, length.out = n))
 
   # Schleife über alle Lambda-Werte
@@ -125,7 +125,7 @@ k_fold_cv <- function(X, y, lambda_values, k = 5) {
       y_test <- y[test_indices]
 
       # Ridge-Regression (alpha = 0)
-      model <- glmnet(X_train, y_train, alpha = 0, lambda = lambda, standardize = TRUE)
+      model <- glmnet(X_train, y_train, alpha = alpha, lambda = lambda, standardize = TRUE)
 
       y_pred <- predict(model, s = lambda, newx = X_test)
 
@@ -141,7 +141,7 @@ k_fold_cv <- function(X, y, lambda_values, k = 5) {
 
 # Beispielhafte Anwendung
 lambda_values <- c(0.0, 0.09, 2)
-mse_values <- k_fold_cv(x,y, lambda_values, k = 5)
+mse_values <- k_fold_cv(x,y, lambda_values, k = 5, alpha=0)
 print(lambda_values)
 cbind(mse_values)
 ```
@@ -204,7 +204,7 @@ legend("topright", legend = rownames(ridge_fit$beta),
 ```{r}
 # Beispielhafte Anwendung
 lambda_values <- c(0, 0.002, 1)
-mse_values <- k_fold_cv(x,y, lambda_values, k = 5)
+mse_values <- k_fold_cv(x,y, lambda_values, k = 5, alpha=1)
 cbind(mse_values)
 ```
 
